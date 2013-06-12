@@ -45,7 +45,7 @@ public class ImageLoader {
 	private final ImageCacher mImageCacher;
 
 	private final HttpManager mHttpManager;
-
+	private ImageWorker mImageWorker;
 	private Drawable mLoadingImage;
 
 	private final Object mPauseWorkLock = new Object();
@@ -79,7 +79,8 @@ public class ImageLoader {
 		mQueue = Collections.synchronizedList(new SetArrayList<Callback>());
 		mViewsCallbacks = Collections
 				.synchronizedMap(new HashMap<ImageView, Callback>());
-		mImageCacher = ImageCacher.getInstance();
+		mImageCacher = ImageCacher.getInstance(context);
+		mImageWorker = ImageWorker.getInstance(context);
 		mResources = context.getResources();
 		mHttpManager = HttpManager.getInstance(context);
 	}
@@ -175,7 +176,8 @@ public class ImageLoader {
 				}
 
 				public void onSuccess(Bitmap bm) {
-					if (!mViewsCallbacks.containsKey(imageView) && imageView.getTag().equals(url)){
+					if (!mViewsCallbacks.containsKey(imageView)
+							&& imageView.getTag().equals(url)) {
 						setImageDrawable(imageView, new BitmapDrawable(
 								mResources, bm));
 					}
@@ -207,7 +209,8 @@ public class ImageLoader {
 	}
 
 	private void proceed() {
-		//L.d(LOG_TAG, "mVC size = " + String.valueOf(mViewsCallbacks.size()) + "   " + String.valueOf(mNumberOnExecute));
+		// L.d(LOG_TAG, "mVC size = " + String.valueOf(mViewsCallbacks.size()) +
+		// "   " + String.valueOf(mNumberOnExecute));
 		if (mViewsCallbacks.isEmpty()) {
 			return;
 		}
@@ -215,8 +218,7 @@ public class ImageLoader {
 			Iterator<ImageView> iterator = mViewsCallbacks.keySet().iterator();
 			while (mNumberOnExecute < 5 && !mViewsCallbacks.isEmpty()
 					&& iterator.hasNext()) {
-				final Callback callback = mViewsCallbacks.get(iterator
-						.next());
+				final Callback callback = mViewsCallbacks.get(iterator.next());
 				iterator.remove();
 				new ImageLoaderTask(callback).start();
 			}
@@ -259,7 +261,7 @@ public class ImageLoader {
 	public void setIsLoadingNew(boolean loadingNew) {
 		synchronized (mIsLoadingNewLock) {
 			mIsLoadingNew = loadingNew;
-			if (loadingNew){
+			if (loadingNew) {
 				proceed();
 			}
 		}
@@ -347,7 +349,7 @@ public class ImageLoader {
 				}
 				try {
 					if (mHttpManager.isAvalibleInetConnection()) {
-						bitmap = mHttpManager.loadBitmap(url, 500, 500);
+						bitmap = mImageWorker.loadBitmap(url, 500, 500);
 					}
 					if (bitmap != null) {
 						mImageCacher.putBitmapToCache(url, bitmap,

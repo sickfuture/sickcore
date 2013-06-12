@@ -1,10 +1,14 @@
 package com.android.sickfuture.sickcore.image.cache;
 
 import java.io.File;
+import java.lang.ref.SoftReference;
+import java.util.Iterator;
+import java.util.Set;
 
 import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.support.v4.util.LruCache;
 import android.util.Log;
 
@@ -13,11 +17,13 @@ import com.android.sickfuture.sickcore.image.cache.disc.LimitedDiscCache;
 
 public class ImageCacher {
 
+	Set<SoftReference<Bitmap>> mReusableBitmaps;
+
 	protected static final String LOG_TAG = ImageCacher.class.getSimpleName();
 
 	private static ImageCacher instance;
 
-	private Context mContext = ContextHolder.getInstance().getContext();
+	private Context mContext;
 
 	private LruCache<String, Bitmap> mStorage;
 
@@ -33,18 +39,19 @@ public class ImageCacher {
 
 	private final int cacheSize = 1024 * 1024 * memClass / 4;
 
-	public static ImageCacher getInstance() {
+	public static ImageCacher getInstance(Context context) {
 		if (instance == null) {
-			instance = new ImageCacher();
+			instance = new ImageCacher(context);
 		}
 		return instance;
 	}
 
-	private ImageCacher() {
-		init();
+	private ImageCacher(Context context) {
+		init(context);
 	}
 
-	private void init() {
+	private void init(Context context) {
+		mContext = context;
 		mStorage = new LruCache<String, Bitmap>(cacheSize) {
 			@Override
 			protected int sizeOf(String key, Bitmap value) {
@@ -68,31 +75,6 @@ public class ImageCacher {
 	}
 
 	public Bitmap getBitmapFromFileCache(String url) {
-		// String key = Converter.stringToMD5(url);
-		// Bitmap bitmap = null;
-		// FileInputStream fis = null;
-		// File cacheFile = null;
-		// try {
-		// cacheFile = new File(mCacheDir, key);
-		// if (cacheFile.exists()) {
-		// fis = new FileInputStream(cacheFile);
-		// bitmap = BitmapFactory.decodeFileDescriptor(fis.getFD());
-		// Log.d(LOG_TAG, "Disk cache hit");
-		// }
-		// } catch (FileNotFoundException e) {
-		// // Ignored, because already not cashed
-		// } catch (IOException e) {
-		// // TODO do smth
-		// } finally {
-		// if (fis != null) {
-		// try {
-		// fis.close();
-		// } catch (IOException e) {
-		// // ignored if already closed
-		// }
-		// }
-		// }
-		// return bitmap;
 		return mDiscCache.get(url);
 	}
 
@@ -105,24 +87,6 @@ public class ImageCacher {
 		if (cacheOnDiskMemory) {
 			mDiscCache.put(url, value);
 		}
-		// String key = Converter.stringToMD5(url);
-		// FileOutputStream fos = null;
-		// File cacheFile = null;
-		// try {
-		// cacheFile = new File(mCacheDir, key);
-		// fos = new FileOutputStream(cacheFile);
-		// value.compress(DEFAULT_COMPRESS_FORMAT, DEFAULT_COMPRESS_QUALITY,
-		// fos);
-		// } catch (IOException e) {
-		// Log.e(LOG_TAG, "putBitmapToCache - " + e);
-		// } finally {
-		// try {
-		// if (fos != null) {
-		// fos.close();
-		// }
-		// } catch (IOException e) {
-		// }
-		// }
 	}
 
 	public void putBitmapToMemoryCache(String key, Bitmap value) {
@@ -138,4 +102,52 @@ public class ImageCacher {
 			throw new NullPointerException("LruCache object is null!!");
 		}
 	}
+	
+	/**
+	 * @param options
+	 *            - BitmapFactory.Options with out* options populated
+	 * @return Bitmap that case be used for inBitmap
+	 */
+	public Bitmap getBitmapFromReusableSet(BitmapFactory.Options options) {
+		Bitmap bitmap = null;
+		synchronized (mReusableBitmaps) {
+			if (mReusableBitmaps != null && !mReusableBitmaps.isEmpty()) {
+				final Iterator<SoftReference<Bitmap>> iterator = mReusableBitmaps
+						.iterator();
+				Bitmap item;
+
+				while (iterator.hasNext()) {
+					SoftReference<Bitmap> reference = iterator.next();
+					item = reference.get();
+
+					if (null != item && item.isMutable()) {
+						// Check to see it the item can be used for inBitmap
+						if (canUseForInBitmap(item, options)) {
+							bitmap = item;
+
+							// Remove from reusable set so it can't be used
+							// again
+							iterator.remove();
+							break;
+						}
+					} else {
+						// Remove from the set if the reference has been
+						// cleared.
+						iterator.remove();
+					}
+				}
+			}
+		}
+		return bitmap;
+	}
+
+	private static boolean canUseForInBitmap(Bitmap candidate,
+			BitmapFactory.Options targetOptions) {
+		int width = targetOptions.outWidth / targetOptions.inSampleSize;
+		int height = targetOptions.outHeight / targetOptions.inSampleSize;
+
+		return candidate.getWidth() == width && candidate.getHeight() == height;
+	}
 }
+
+
