@@ -8,24 +8,19 @@ public abstract class CommonTask<D,T> extends AsyncTask<D, Void, T> {
 
 	private ParamCallback<T> mParamCallback;
 
-	public CommonTask(D d, ParamCallback<T> paramCallback) {
+	public CommonTask(ParamCallback<T> paramCallback) {
 		super();
 		this.mParamCallback = paramCallback;
 	}
 
 	public abstract Object load(D d);
 
-	public abstract T convert(Object source) throws Exception;
-
-	private Exception e;
+	private Exception e = null;
 
 	@Override
 	protected T doInBackground(D... params) {
 		try {
 			Object source = load(params[0]);
-			if (source != null) {
-				return convert(source);
-			}
 		} catch (Exception e) {
 			this.e = e;
 		}
@@ -34,8 +29,7 @@ public abstract class CommonTask<D,T> extends AsyncTask<D, Void, T> {
 
 	@Override
 	protected void onPostExecute(T result) {
-		super.onPostExecute(result);
-		if (e != null) {
+		if (this.e != null) {
 			mParamCallback.onError(e);
 		} else {
 			mParamCallback.onSuccess(result);
@@ -51,4 +45,7 @@ public abstract class CommonTask<D,T> extends AsyncTask<D, Void, T> {
 		}
 	}
 
+	public void setException(Exception e) {
+		this.e = e;
+	}
 }
