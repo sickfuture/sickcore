@@ -14,7 +14,6 @@ public abstract class BaseCursorAdapter extends CursorAdapter {
         super(context, c, true);
 	}
 
-	
 	@Override
     public View getView(int position, View convertView, ViewGroup parent) {
             if (!mDataValid) {

@@ -71,9 +71,7 @@ public class LimitedDiscCache extends BaseDiscCache {
 		long update = System.currentTimeMillis();
 		if (LRUList.remove(key) != null) {
 			LRUList.put(key, update);
-			// L.d(LOG_TAG, "image updated");
 		} else
-			// L.w(LOG_TAG, "update failure");
 			file.setLastModified(update);
 		Bitmap bitmap = null;
 		FileInputStream fis = null;

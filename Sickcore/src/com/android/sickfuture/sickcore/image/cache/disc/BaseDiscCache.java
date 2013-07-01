@@ -12,7 +12,7 @@ import android.util.Log;
 import com.android.sickfuture.sickcore.utils.Converter;
 import com.android.sickfuture.sickcore.utils.L;
 
-public abstract class BaseDiscCache implements IDiscCache {
+public abstract class BaseDiscCache {
 
 	private static final CompressFormat DEFAULT_COMPRESS_FORMAT = CompressFormat.JPEG;
 	private static final int DEFAULT_COMPRESS_QUALITY = 100;
@@ -43,7 +43,6 @@ public abstract class BaseDiscCache implements IDiscCache {
 		return cacheFile;
 	}
 
-	@Override
 	public File put(String name, Bitmap value) {
 		String key = Converter.stringToMD5(name);
 		FileOutputStream fos = null;
@@ -68,7 +67,6 @@ public abstract class BaseDiscCache implements IDiscCache {
 		return null;
 	}
 
-	@Override
 	public boolean clear() {
 		File[] files = mCacheDir.listFiles();
 		for (File file : files) {
@@ -84,4 +82,5 @@ public abstract class BaseDiscCache implements IDiscCache {
 		return mCacheDir;
 	}
 
+	public abstract Bitmap get(String name);
 }
