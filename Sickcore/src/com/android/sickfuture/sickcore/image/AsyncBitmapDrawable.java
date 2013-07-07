@@ -6,7 +6,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 
-import com.android.sickfuture.sickcore.image.SuperImageLoader.BitmapAsyncTask;
+import com.android.sickfuture.sickcore.image.SickImageLoader.BitmapAsyncTask;
 
 public class AsyncBitmapDrawable extends BitmapDrawable {
 

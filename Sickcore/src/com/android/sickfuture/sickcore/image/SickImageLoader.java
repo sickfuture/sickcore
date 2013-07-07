@@ -32,7 +32,7 @@ import com.android.sickfuture.sickcore.image.drawable.RecyclingBitmapDrawable;
 import com.android.sickfuture.sickcore.utils.AndroidVersionsUtils;
 import com.android.sickfuture.sickcore.utils.L;
 
-public class SuperImageLoader {
+public class SickImageLoader {
 
 	private static final String LOG_TAG = "ImageLoader";
 
@@ -40,7 +40,7 @@ public class SuperImageLoader {
 	private boolean mFadeIn = true;
 	private Bitmap mLoadingBitmap;
 
-	private static volatile SuperImageLoader instance;
+	private static volatile SickImageLoader instance;
 
 	private final Resources mResources;
 	private final ImageCacher mImageCacher;
@@ -50,20 +50,20 @@ public class SuperImageLoader {
 	private final Object mPauseWorkLock = new Object();
 	private boolean mPauseWork = false;
 
-	private SuperImageLoader(Context context) {
+	private SickImageLoader(Context context) {
 		mResources = context.getResources();
 		mImageCacher = ImageCacher.getInstance(context, mResources);
 		mHttpManager = HttpManager.getInstance(context);
 		mImageWorker = ImageWorker.getInstance(mHttpManager, mImageCacher);
 	}
 
-	public static SuperImageLoader getInstance(Context context) {
-		SuperImageLoader localInstance = instance;
+	public static SickImageLoader getInstance(Context context) {
+		SickImageLoader localInstance = instance;
 		if (localInstance == null) {
-			synchronized (SuperImageLoader.class) {
+			synchronized (SickImageLoader.class) {
 				localInstance = instance;
 				if (localInstance == null) {
-					instance = localInstance = new SuperImageLoader(context);
+					instance = localInstance = new SickImageLoader(context);
 				}
 			}
 		}
