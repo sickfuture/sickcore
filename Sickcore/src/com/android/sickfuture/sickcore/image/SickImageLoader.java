@@ -3,12 +3,8 @@ package com.android.sickfuture.sickcore.image;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.http.ParseException;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -19,12 +15,12 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.TransitionDrawable;
+import android.os.AsyncTask;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.ImageView;
 
 import com.android.sickfuture.sickcore.BuildConfig;
-import com.android.sickfuture.sickcore.asynctask.CustomExecutorAsyncTask;
 import com.android.sickfuture.sickcore.exceptions.BadRequestException;
 import com.android.sickfuture.sickcore.http.HttpManager;
 import com.android.sickfuture.sickcore.image.cache.ImageCacher;
@@ -35,12 +31,13 @@ import com.android.sickfuture.sickcore.utils.L;
 public class SickImageLoader {
 
 	private static final String LOG_TAG = "ImageLoader";
+	public static final String SYSTEM_SERVICE_KEY = "framework:imageloader";
 
 	private int mFadeInTme = 600;
 	private boolean mFadeIn = true;
-	private Bitmap mLoadingBitmap;
+	private Bitmap mPlaceHolderBitmap;
 
-	private static volatile SickImageLoader instance;
+	private static SickImageLoader instance;
 
 	private final Resources mResources;
 	private final ImageCacher mImageCacher;
@@ -50,33 +47,27 @@ public class SickImageLoader {
 	private final Object mPauseWorkLock = new Object();
 	private boolean mPauseWork = false;
 
-	private SickImageLoader(Context context) {
+	public SickImageLoader(Context context) {
 		mResources = context.getResources();
 		mImageCacher = ImageCacher.getInstance(context, mResources);
 		mHttpManager = HttpManager.getInstance(context);
 		mImageWorker = ImageWorker.getInstance(mHttpManager, mImageCacher);
 	}
 
-	public static SickImageLoader getInstance(Context context) {
-		SickImageLoader localInstance = instance;
-		if (localInstance == null) {
-			synchronized (SickImageLoader.class) {
-				localInstance = instance;
-				if (localInstance == null) {
-					instance = localInstance = new SickImageLoader(context);
-				}
-			}
+	public static SickImageLoader get(Context context) {
+		if (instance == null) {
+			instance = new SickImageLoader(context);
 		}
-		return localInstance;
+		return instance;
 	}
 
 	public void setLoadingImage(int resDrawableID) {
-		mLoadingBitmap = BitmapFactory
-				.decodeResource(mResources, resDrawableID);
+		mPlaceHolderBitmap = BitmapFactory.decodeResource(mResources,
+				resDrawableID);
 	}
 
 	public void setLoadingImage(Bitmap bitmap) {
-		mLoadingBitmap = bitmap;
+		mPlaceHolderBitmap = bitmap;
 	}
 
 	public void setFadeInBitmap(boolean fadeIn) {
@@ -94,16 +85,16 @@ public class SickImageLoader {
 				.getBitmapFromMemoryCache(url);
 		if (bitmapDrawable != null) {
 			setImageDrawable(imageView, bitmapDrawable);
-		} else if (cancelPotentialDownLoad(imageView, url)) {
+		} else if (cancelPotentialDownload(imageView, url)) {
 			BitmapAsyncTask bitmapAsyncTask = new BitmapAsyncTask(imageView);
 			AsyncBitmapDrawable asyncbitmapDrawable = new AsyncBitmapDrawable(
-					mResources, mLoadingBitmap, bitmapAsyncTask);
+					mResources, mPlaceHolderBitmap, bitmapAsyncTask);
 			imageView.setImageDrawable(asyncbitmapDrawable);
 			bitmapAsyncTask.start(url);
 		}
 	}
 
-	private static boolean cancelPotentialDownLoad(ImageView imageView,
+	private static boolean cancelPotentialDownload(ImageView imageView,
 			String url) {
 		BitmapAsyncTask bitmapAsyncTask = getImageLoaderTask(imageView);
 		if (bitmapAsyncTask != null) {
@@ -115,7 +106,6 @@ public class SickImageLoader {
 							+ url);
 				}
 			} else {
-				// The same URL is already being downloaded.
 				return false;
 			}
 		}
@@ -136,20 +126,17 @@ public class SickImageLoader {
 	@SuppressLint("NewApi")
 	@SuppressWarnings("deprecation")
 	private void setImageDrawable(ImageView imageView, Drawable drawable) {
-		if (mFadeIn) {
-			// Transition drawable with a transparent drawable and the final
-			// drawable
+		if (mFadeIn && drawable != null) {
 			final TransitionDrawable td = new TransitionDrawable(
 					new Drawable[] {
 							new ColorDrawable(android.R.color.transparent),
 							drawable });
-			// Set background to loading bitmap
 			if (AndroidVersionsUtils.hasJellyBean()) {
 				imageView.setBackground(new BitmapDrawable(mResources,
-						mLoadingBitmap));
+						mPlaceHolderBitmap));
 			} else {
 				imageView.setBackgroundDrawable(new BitmapDrawable(mResources,
-						mLoadingBitmap));
+						mPlaceHolderBitmap));
 			}
 			imageView.setImageDrawable(td);
 			td.startTransition(mFadeInTme);
@@ -180,25 +167,26 @@ public class SickImageLoader {
 	}
 
 	public class BitmapAsyncTask extends
-			CustomExecutorAsyncTask<String, Void, Object> {
+			AsyncTask<String, Void, BitmapDrawable> {
 
-		private static final int CORE_POOL_SIZE = 3;
-		private static final int MAXIMUM_POOL_SIZE = 15;
-		private static final int KEEP_ALIVE = 5;
+		// private static final int CORE_POOL_SIZE = 3;
+		// private static final int MAXIMUM_POOL_SIZE = 15;
+		// private static final int KEEP_ALIVE = 5;
 
-		private final BlockingQueue<Runnable> sWorkQueue = new LinkedBlockingQueue<Runnable>(
-				MAXIMUM_POOL_SIZE);
-		private final ThreadFactory sThreadFactory = new ThreadFactory() {
-			private final AtomicInteger mCount = new AtomicInteger(1);
-
-			public Thread newThread(Runnable r) {
-				return new Thread(r, "ImageAsyncTask #"
-						+ mCount.getAndIncrement());
-			}
-		};
-		private final ThreadPoolExecutor mExecutor = new ThreadPoolExecutor(
-				CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE,
-				TimeUnit.SECONDS, sWorkQueue, sThreadFactory);
+		// private final BlockingQueue<Runnable> sWorkQueue = new
+		// LinkedBlockingQueue<Runnable>(
+		// MAXIMUM_POOL_SIZE);
+		// private final ThreadFactory sThreadFactory = new ThreadFactory() {
+		// private final AtomicInteger mCount = new AtomicInteger(1);
+		//
+		// public Thread newThread(Runnable r) {
+		// return new Thread(r, "ImageAsyncTask #"
+		// + mCount.getAndIncrement());
+		// }
+		// };
+		// private final ThreadPoolExecutor mExecutor = new ThreadPoolExecutor(
+		// CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE,
+		// TimeUnit.SECONDS, sWorkQueue, sThreadFactory);
 
 		private String mUrl;
 
@@ -209,71 +197,66 @@ public class SickImageLoader {
 		}
 
 		public void start(String url) {
-			execute(mExecutor, url);
+			// custom version of AsyncTask
+			executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, url);
 		}
 
 		@Override
-		protected Object doInBackground(String... params) {
+		protected BitmapDrawable doInBackground(String... params) {
 			mUrl = params[0];
 			if (TextUtils.isEmpty(mUrl)) {
-				return new IllegalArgumentException("Empty url!");
+				if (BuildConfig.DEBUG) {
+					L.e(LOG_TAG, "Empty url!");
+				}
 			}
 			synchronized (mPauseWorkLock) {
 				while (mPauseWork && !isCancelled()) {
 					try {
 						mPauseWorkLock.wait();
 					} catch (InterruptedException e) {
-						return e;
+						// TODO Handle exception
 					}
 				}
 			}
 			BitmapDrawable bitmapDrawable = null;
 			Bitmap bitmap = null;
-			try {
+			if (mImageCacher != null) {
 				bitmapDrawable = mImageCacher.getBitmapFromFileCache(mUrl);
-				if (bitmapDrawable != null) {
-					return bitmapDrawable;
+			}
+			if (bitmapDrawable != null) {
+				return bitmapDrawable;
+			}
+			try {
+				if (mHttpManager.isAvalibleInetConnection() && !isCancelled()
+						&& getAttachedImageView() != null) {
+					bitmap = mImageWorker.loadBitmap(mUrl, 500, 500);
 				}
-				try {
-					if (mHttpManager.isAvalibleInetConnection()
-							&& !isCancelled() && getAttachedImageView() != null) {
-						bitmap = mImageWorker.loadBitmap(mUrl, 500, 500);
-					}
-					if (bitmap != null) {
-						// TODO fix inBitmap bug
-						// if (AndroidVersionsUtils.hasHoneycomb()) {
-						// bitmapDrawable = new BitmapDrawable(mResources,
-						// bitmap);
-						// }else{
+				if (bitmap != null) {
+					if (AndroidVersionsUtils.hasHoneycomb()
+							&& bitmap.getConfig() != null) {
+						bitmapDrawable = new BitmapDrawable(mResources, bitmap);
+					} else {
 						bitmapDrawable = new RecyclingBitmapDrawable(
 								mResources, bitmap);
-						// }
-						mImageCacher.put(mUrl, bitmapDrawable);
 					}
-				} catch (MalformedURLException e) {
-					return e;
-				} catch (BadRequestException e) {
-					return e;
+					mImageCacher.put(mUrl, bitmapDrawable);
 				}
+			} catch (MalformedURLException e) {
+				// TODO Handle exception
+			} catch (BadRequestException e) {
+				// TODO Handle exception
+			} catch (ParseException e) {
+				// TODO Handle exception
 			} catch (IOException e) {
-				return e;
+				// TODO Handle exception
 			}
 			return bitmapDrawable;
 		}
 
 		@Override
-		protected void onPostExecute(Object result) {
+		protected void onPostExecute(BitmapDrawable result) {
 			if (isCancelled()) {
 				result = null;
-			}
-			if (result == null) {
-				return;
-			}
-			if (!(BitmapDrawable.class.isInstance(result))) {
-				if (BuildConfig.DEBUG) {
-					L.e(LOG_TAG, ((Throwable) result).getMessage());
-				}
-				return;
 			}
 			if (mImageViewReference != null) {
 				ImageView imageView = mImageViewReference.get();
@@ -281,7 +264,9 @@ public class SickImageLoader {
 				// Change bitmap only if this process is still associated with
 				// it
 				if (this == bitmapDownloaderTask) {
-					setImageDrawable(imageView, (BitmapDrawable) result);
+					if (imageView != null) {
+						setImageDrawable(imageView, result);
+					}
 				}
 			}
 		}
@@ -301,12 +286,12 @@ public class SickImageLoader {
 			if (this == bitmapWorkerTask) {
 				return imageView;
 			}
-
 			return null;
 		}
 	}
 }
 
+// TODO remove comments
 // private SuperImageLoader(Builder builder) {
 // mImageCacher = builder.mImageCacher;
 // mResources = builder.mResources;
