@@ -104,7 +104,11 @@ public class ImageCacher {
 		Bitmap result = mDiscCache.get(url);
 		BitmapDrawable drawable = null;
 		if (result != null && mCacheOnMemory) {
-			drawable = new BitmapDrawable(mResources, result);
+			if (AndroidVersionsUtils.hasHoneycomb()) {
+				drawable = new BitmapDrawable(mResources, result);
+			} else {
+				drawable = new RecyclingBitmapDrawable(mResources, result);
+			}
 			putBitmapToMemoryCache(url, drawable);
 		}
 		return drawable;
