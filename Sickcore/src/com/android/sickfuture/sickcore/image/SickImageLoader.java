@@ -30,8 +30,7 @@ import com.android.sickfuture.sickcore.utils.L;
 
 public class SickImageLoader {
 
-	private static final String LOG_TAG = "ImageLoader";
-	public static final String SYSTEM_SERVICE_KEY = "framework:imageloader";
+	private static final String LOG_TAG = SickImageLoader.class.getSimpleName();
 
 	private int mFadeInTme = 600;
 	private boolean mFadeIn = true;
@@ -76,9 +75,7 @@ public class SickImageLoader {
 
 	public void loadBitmap(ImageView imageView, String url) {
 		if (TextUtils.isEmpty(url)) {
-			if (BuildConfig.DEBUG) {
-				L.e(LOG_TAG, "empty or null url");
-			}
+			L.e(LOG_TAG, "empty or null url");
 			return;
 		}
 		BitmapDrawable bitmapDrawable = mImageCacher
@@ -101,10 +98,7 @@ public class SickImageLoader {
 			String bitmapUrl = bitmapAsyncTask.mUrl;
 			if (bitmapUrl == null || !bitmapUrl.equals(url)) {
 				bitmapAsyncTask.cancel(true);
-				if (BuildConfig.DEBUG) {
-					Log.d(LOG_TAG, "cancelPotentialWork - cancelled work for "
-							+ url);
-				}
+				L.d(LOG_TAG, "cancelPotentialWork - cancelled work for " + url);
 			} else {
 				return false;
 			}
@@ -205,9 +199,7 @@ public class SickImageLoader {
 		protected BitmapDrawable doInBackground(String... params) {
 			mUrl = params[0];
 			if (TextUtils.isEmpty(mUrl)) {
-				if (BuildConfig.DEBUG) {
-					L.e(LOG_TAG, "Empty url!");
-				}
+				L.e(LOG_TAG, "Empty url!");
 			}
 			synchronized (mPauseWorkLock) {
 				while (mPauseWork && !isCancelled()) {
