@@ -1,100 +1,86 @@
 package com.android.sickfuture.sickcore.image;
 
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
-
-import org.apache.http.client.methods.HttpGet;
 
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 
-import com.android.sickfuture.sickcore.BuildConfig;
+import com.android.sickfuture.sickcore.app.SickApp;
 import com.android.sickfuture.sickcore.exceptions.BadRequestException;
-import com.android.sickfuture.sickcore.http.HttpManager;
-import com.android.sickfuture.sickcore.image.cache.ImageCacher;
+import com.android.sickfuture.sickcore.source.implemented.HttpInputStreamDataSource;
+import com.android.sickfuture.sickcore.utils.AndroidVersionsUtils;
+import com.android.sickfuture.sickcore.utils.AppUtils;
 import com.android.sickfuture.sickcore.utils.Calculate;
+import com.android.sickfuture.sickcore.utils.IOUtils;
 import com.android.sickfuture.sickcore.utils.L;
 
 public class ImageWorker {
 
+	private static final String GIF = "image/gif";
+
 	private static final String LOG_TAG = ImageWorker.class.getSimpleName();
 
-	private final HttpManager mHttpManager;
+	public static final String SYSTEM_SERVICE_KEY = "sickcore:imageworker";
+
+	// private static final int IO_BUFFER_SIZE = 8 * 1024;
+
 	private final ImageCacher mImageCacher;
 
-	private static volatile ImageWorker instance;
+	private HttpInputStreamDataSource mDataSource;
 
-	private ImageWorker(HttpManager httpManager, ImageCacher imageCacher) {
-		mHttpManager = httpManager;
+	protected ImageWorker(Context context, ImageCacher imageCacher) {
+		mDataSource = (HttpInputStreamDataSource) AppUtils.get(context,
+				SickApp.HTTP_INPUT_STREAM_SERVICE_KEY);
 		mImageCacher = imageCacher;
 	}
 
-	public static ImageWorker getInstance(HttpManager httpManager,
-			ImageCacher imageCacher) {
-		ImageWorker localInstance = instance;
-		if (localInstance == null) {
-			synchronized (ImageWorker.class) {
-				localInstance = instance;
-				if (localInstance == null) {
-					instance = localInstance = new ImageWorker(httpManager,
-							imageCacher);
-				}
-			}
-		}
-		return localInstance;
-	}
-
 	public Bitmap loadBitmap(String url, int reqWidth, int reqHeight)
-			throws MalformedURLException, IOException, BadRequestException {
-		InputStream openStream = null;
-		byte[] byteArray = null;
-		Bitmap result = null;
+			throws IOException {
+		InputStream is = null;
+		FlushedInputStream fis = null;
 		try {
-			openStream = mHttpManager.loadInputStream(new HttpGet(url));
-			int streamLength = openStream.available();
-			byteArray = new byte[streamLength];
-			openStream.read(byteArray);
+			try {
+				is = mDataSource.getSource(url);
+			} catch (BadRequestException e) {
+				// can be ignore
+			}
+			if (is == null) {
+				return null;
+			}
+			fis = new FlushedInputStream(is);
+			fis.mark(is.available());
 			BitmapFactory.Options options = new BitmapFactory.Options();
 			options.inJustDecodeBounds = true;
-			BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length,
-					options);
+			BitmapFactory.decodeStream(fis, null, options);
 			int sampleSize = Calculate.calculateInSampleSize(options, reqWidth,
 					reqHeight);
-			if (BuildConfig.DEBUG) {
-				L.d(LOG_TAG, "input width = " + options.outWidth + ", "
-						+ "input height = " + options.outHeight);
-				L.d(LOG_TAG, "sample size = " + sampleSize);
-				L.d(LOG_TAG, "format = " + options.outMimeType);
-			}
+			L.d(LOG_TAG, "input width = " + options.outWidth + ", "
+					+ "input height = " + options.outHeight);
+			L.d(LOG_TAG, "sample size = " + sampleSize);
+			L.d(LOG_TAG, "format = " + options.outMimeType);
 			options.inSampleSize = sampleSize;
-			// options.inPreferredConfig = Config.RGB_565;
 			options.inJustDecodeBounds = false;
-			// if (AndroidVersionsUtils.hasHoneycomb()) {
-			// addInBitmapOptions(options, mImageCacher);
-			// }
-			result = BitmapFactory.decodeByteArray(byteArray, 0,
-					byteArray.length, options);
-			if (BuildConfig.DEBUG) {
-				if (result != null) {
-					int height = result.getHeight();
-					int width = result.getWidth();
-					L.d(LOG_TAG, "output width = " + width + ", "
-							+ "output height = " + height);
+			if (AndroidVersionsUtils.hasHoneycomb()) {
+				if (!options.outMimeType.equals(GIF)) {
+					addInBitmapOptions(options, mImageCacher);
 				}
+			}
+			fis.reset();
+			Bitmap result = BitmapFactory.decodeStream(fis, null, options);
+			if (result != null) {
+				L.d(LOG_TAG, "output width = " + result.getWidth() + ", "
+						+ "output height = " + result.getHeight());
+				L.d(LOG_TAG, "result config" + result.getConfig());
 			}
 			return result;
 		} finally {
-			try {
-				if (openStream != null) {
-					openStream.close();
-				}
-			} catch (IOException e) {
-				L.e(LOG_TAG, "Cant load bitmap from " + url);
-
-			}
+			IOUtils.closeStream(is);
+			IOUtils.closeStream(fis);
 		}
 	}
 
@@ -103,12 +89,10 @@ public class ImageWorker {
 			ImageCacher cache) {
 		options.inMutable = true;
 
-		if (cache != null) {
+		if (cache != null && options != null) {
 			Bitmap inBitmap = cache.getBitmapFromReusableSet(options);
 			if (inBitmap != null) {
-				if (BuildConfig.DEBUG) {
-					L.d(LOG_TAG, "Found bitmap to use for inBitmap");
-				}
+				L.d(LOG_TAG, "Found bitmap to use for inBitmap");
 				options.inBitmap = inBitmap;
 			}
 		}

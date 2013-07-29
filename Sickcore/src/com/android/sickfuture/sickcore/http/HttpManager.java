@@ -1,11 +1,12 @@
 package com.android.sickfuture.sickcore.http;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.Reader;
-import java.net.MalformedURLException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 
@@ -40,29 +41,33 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 
+import com.android.sickfuture.sickcore.app.AppHelper;
+import com.android.sickfuture.sickcore.app.AppHelper.IAppServiceKey;
+import com.android.sickfuture.sickcore.context.ContextHolder;
 import com.android.sickfuture.sickcore.exceptions.BadRequestException;
-import com.android.sickfuture.sickcore.utils.Calculate;
+import com.android.sickfuture.sickcore.utils.AppUtils;
+import com.android.sickfuture.sickcore.utils.IOUtils;
 import com.android.sickfuture.sickcore.utils.L;
 
-public class HttpManager {
+public class HttpManager implements IAppServiceKey {
 
-	private static final String LOG_TAG = "HttpManager";
+	private static final String LOG_TAG = HttpManager.class.getSimpleName();
+
+	public static final String SYSTEM_SERVICE_KEY = "sickcore:httpmanager";
 
 	private static final String UTF_8 = "UTF_8";
 
 	private HttpClient mClient;
 
-	private static volatile HttpManager instance;
+	private static HttpManager instance;
 
-	private static Context mContext;
-
-	private static final int SO_TIMEOUT = 20000;
+	private static final int SO_TIMEOUT = 26000;
 
 	private static final String ILLEGAL_REQUEST_TYPE = "Illegal request type. Use HttpManager's RequestType.";
+
+	private static final int IO_BUFFER_SIZE = 8 * 1024;
 
 	private ConnectivityManager mConnectivityManager;
 
@@ -74,6 +79,8 @@ public class HttpManager {
 
 	}
 
+	// TODO needs to be as implementation of some abstraction, discuss with me
+	// about it
 	private HttpManager() {
 		HttpParams params = new BasicHttpParams();
 		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
@@ -94,58 +101,21 @@ public class HttpManager {
 		ThreadSafeClientConnManager manager = new ThreadSafeClientConnManager(
 				params, registry);
 		mClient = new DefaultHttpClient(manager, params);
-		mConnectivityManager = (ConnectivityManager) mContext
+		mConnectivityManager = (ConnectivityManager) ContextHolder
+				.getInstance().getContext()
 				.getSystemService(Context.CONNECTIVITY_SERVICE);
 	}
 
-	public static HttpManager getInstance(Context context) {
-		mContext = context;
-		HttpManager localInstance = instance;
-		if (localInstance == null) {
-			synchronized (HttpManager.class) {
-				localInstance = instance;
-				if (localInstance == null) {
-					instance = localInstance = new HttpManager();
-				}
-			}
-		}
-		return localInstance;
+	@Override
+	public String getKey() {
+		return SYSTEM_SERVICE_KEY;
 	}
 
-	public Bitmap loadBitmap(String url, int reqWidth, int reqHeight)
-			throws MalformedURLException, IOException, BadRequestException {
-		InputStream openStream = null;
-		byte[] byteArray = null;
-		Bitmap result = null;
-		try {
-			openStream = loadInputStream(new HttpGet(url));
-			int streamLength = openStream.available();
-			byteArray = new byte[streamLength];
-			openStream.read(byteArray);
-			BitmapFactory.Options options = new BitmapFactory.Options();
-			options.inJustDecodeBounds = true;
-			BitmapFactory.decodeByteArray(byteArray, 0, streamLength, options);
-			L.d(LOG_TAG, "input width = " + options.outWidth + ", "
-					+ "input height = " + options.outHeight);
-			int sampleSize = Calculate.calculateInSampleSize(options, reqWidth,
-					reqHeight);
-			L.d(LOG_TAG, "sample size = " + sampleSize);
-			options.inJustDecodeBounds = false;
-			options.inSampleSize = sampleSize;
-			result = BitmapFactory.decodeByteArray(byteArray, 0, streamLength,
-					options);
-			if (result != null) {
-				int height = result.getHeight();
-				int width = result.getWidth();
-				L.d(LOG_TAG, "output width = " + width + ", "
-						+ "output height = " + height);
-			}
-			return result;
-		} finally {
-			if (openStream != null) {
-				openStream.close();
-			}
+	public static HttpManager get(Context context) {
+		if (instance == null) {
+			AppHelper.get(context).registerAppService(new HttpManager());
 		}
+		return (HttpManager) AppUtils.get(context, SYSTEM_SERVICE_KEY);
 	}
 
 	public String postRequest(String url, ArrayList<BasicNameValuePair> params)
@@ -206,8 +176,8 @@ public class HttpManager {
 			L.d(LOG_TAG, "source = " + jsonText);
 			return jsonText;
 		} finally {
-			rd.close();
-			is.close();
+			IOUtils.closeStream(is);
+			IOUtils.closeStream(rd);
 		}
 	}
 
@@ -225,22 +195,36 @@ public class HttpManager {
 					+ response.getStatusLine().getStatusCode());
 
 		}
-		// TODO check
-		HttpEntity entity = null;
-		BufferedHttpEntity httpEntity = null;
+		final HttpEntity entity = response.getEntity();
+		final BufferedHttpEntity httpEntity = new BufferedHttpEntity(entity);
 		try {
-			entity = response.getEntity();
-			httpEntity = new BufferedHttpEntity(entity);
+			InputStream inputStream = httpEntity.getContent();
+			return inputStream;
+		} finally {
+			httpEntity.consumeContent();
+			entity.consumeContent();
+		}
+	}
+
+	public void downloadImage(String urlString, OutputStream destination)
+			throws IOException {
+		final BufferedOutputStream out = new BufferedOutputStream(destination,
+				IO_BUFFER_SIZE);
+		final HttpGet get = new HttpGet(urlString);
+
+		HttpEntity entity = null;
+		try {
+			final HttpResponse response = mClient.execute(get);
+			if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
+				entity = response.getEntity();
+				entity.writeTo(out);
+				out.flush();
+			}
 		} finally {
 			if (entity != null) {
 				entity.consumeContent();
 			}
-			if (httpEntity != null) {
-				httpEntity.consumeContent();
-			}
 		}
-		InputStream is = httpEntity.getContent();
-		return is;
 	}
 
 	private static String readAll(final Reader rd) throws IOException {
@@ -252,7 +236,6 @@ public class HttpManager {
 		return sb.toString();
 	}
 
-	// if won't work, maybe because connectivity manager is static
 	public boolean isAvalibleInetConnection() {
 		return mConnectivityManager.getActiveNetworkInfo() != null;
 	}

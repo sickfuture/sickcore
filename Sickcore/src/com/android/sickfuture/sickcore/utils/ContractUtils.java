@@ -1,8 +1,7 @@
 package com.android.sickfuture.sickcore.utils;
 
 import android.net.Uri;
-
-import com.android.sickfuture.sickcore.annotations.ContentInfo;
+import annotations.ContentInfo;
 
 public class ContractUtils {
 

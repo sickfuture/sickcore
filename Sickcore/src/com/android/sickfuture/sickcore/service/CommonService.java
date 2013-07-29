@@ -7,6 +7,7 @@ import android.os.IBinder;
 
 import com.android.sickfuture.sickcore.asynctask.ParamCallback;
 
+//TODO fullrefactoring after discussion
 public abstract class CommonService<T> extends Service implements
 		ParamCallback<T> {
 
@@ -14,11 +15,11 @@ public abstract class CommonService<T> extends Service implements
 
 	public static String DATA = "data";
 
-	public static String ACTION_ON_SUCCESS = "com.android.sickfuture.sickcore.ACTION_ON_SUCCESS";
+	public static String ACTION_ON_SUCCESS = "com.epam.android.framework.ACTION_ON_SUCCESS";
 
-	public static String ACTION_ON_ERROR = "com.android.sickfuture.sickcore.ACTION_ON_ERROR";
+	public static String ACTION_ON_ERROR = "com.epam.android.framework.ACTION_ON_ERROR";
 
-	public static final String EXTRA_KEY_MESSAGE = "error_message";
+	public static final String EXTRA_KEY_MESSAGE = "error message";
 
 	public static final String LOG_TAG = "CommonService";
 

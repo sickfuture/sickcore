@@ -104,6 +104,7 @@ public class NetworkHelper {
 
 			@Override
 			protected Object doInBackground(Void... params) {
+				
 				ConnectivityManager manager = (ConnectivityManager) context
 						.getSystemService(Context.CONNECTIVITY_SERVICE);
 				final WifiManager wifiManager = (WifiManager) context

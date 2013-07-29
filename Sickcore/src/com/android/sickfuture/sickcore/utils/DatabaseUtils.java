@@ -6,42 +6,37 @@ import java.util.ArrayList;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.util.Log;
-
-import com.android.sickfuture.sickcore.annotations.db.DBAutoincrement;
-import com.android.sickfuture.sickcore.annotations.db.DBPrimaryKey;
-import com.android.sickfuture.sickcore.annotations.db.DBTableName;
-import com.android.sickfuture.sickcore.annotations.db.DBUnique;
-import com.android.sickfuture.sickcore.annotations.db.contract.DBContract;
-import com.android.sickfuture.sickcore.annotations.db.types.DBBooleanType;
-import com.android.sickfuture.sickcore.annotations.db.types.DBByteArrayType;
-import com.android.sickfuture.sickcore.annotations.db.types.DBByteType;
-import com.android.sickfuture.sickcore.annotations.db.types.DBDoubleType;
-import com.android.sickfuture.sickcore.annotations.db.types.DBIntegerType;
-import com.android.sickfuture.sickcore.annotations.db.types.DBLongType;
-import com.android.sickfuture.sickcore.annotations.db.types.DBVarcharType;
+import annotations.database.DBAutoincrement;
+import annotations.database.DBPrimaryKey;
+import annotations.database.DBTableName;
+import annotations.database.DBUnique;
+import annotations.database.contract.DBContract;
+import annotations.database.types.DBBooleanType;
+import annotations.database.types.DBByteArrayType;
+import annotations.database.types.DBByteType;
+import annotations.database.types.DBDoubleType;
+import annotations.database.types.DBIntegerType;
+import annotations.database.types.DBLongType;
+import annotations.database.types.DBVarcharType;
 
 public class DatabaseUtils {
 
+	private static final String LOG_TAG = "DatabaseUtils";
 	private static final String WRONG_CONTRACTS_CLASS = "Wrong contracts class! Contracts class should be marked with DBContract annotation";
-	private static final String DATABASE_UTILS = "DatabaseUtils";
 	private static final String BAD_CONTRACT_FIELD_VALUE = "Bad contract field value";
 	private static final String DATABASE_PRIMARY_KEY_EXCEPTION_MESSAGE = "Wrong contract class! Annotation @DBPrimaryKey does not exist at any field. Please implement the contract class by FrameWorkBaseColumns interface to get default primary key field";
 	private static final String INTEGER_PRIMARY_KEY = " INTEGER PRIMARY KEY";
-	private static final String AUTOINCREMENT = " AUTOINCREMENT ";
+	private static final String AUTOINCREMENT = " AUTOINCREMENT";
 	private static final String DOUBLE = "DOUBLE";
-	private static final String BYTE = "BYTE";
 	private static final String BLOB = "BLOB";
-	private static final String LONG = "LONG";
+	private static final String BIGINT = "BIGINT";
 	private static final String BOOLEAN = "BOOLEAN";
 	private static final String INTEGER = "INTEGER";
 	private static final String VARCHAR = "VARCHAR";
 
 	private static final String SELECT_DISTINCT_TBL = "select DISTINCT tbl_name from sqlite_master where tbl_name = '";
 
-	private static final String CREATE_TABLE = "CREATE TABLE";
-
-	private final static Object mDBInTransactionObjectLock = new Object();
+	private static String CREATE_TABLE_TEMPLATE = "CREATE TABLE IF NOT EXISTS %1$s (%2$s)";
 
 	private DatabaseUtils() {
 	}
@@ -49,7 +44,7 @@ public class DatabaseUtils {
 	/**
 	 * Checks if such database table already exists.
 	 * 
-	 * @param db
+	 * @param database
 	 *            current database object
 	 * @param tableName
 	 *            current table name
@@ -57,30 +52,17 @@ public class DatabaseUtils {
 	 * */
 	public static boolean isTableExists(SQLiteDatabase database,
 			String tableName) {
-		Cursor cursor;
-		cursor = database.rawQuery(SELECT_DISTINCT_TBL + tableName + "'", null);
+		if (database == null || tableName == null) {
+			return false;
+		}
+		Cursor cursor = database.rawQuery(
+				SELECT_DISTINCT_TBL + tableName + "'", null);
 		if (cursor.getCount() > 0) {
 			cursor.close();
 			return true;
 		} else {
 			cursor.close();
 			return false;
-		}
-	}
-
-	/**
-	 * Stopping current thread while database in transaction
-	 * 
-	 * @param db
-	 *            current database object
-	 * */
-	public static void waitWhileTransaction() {
-		synchronized (mDBInTransactionObjectLock) {
-			try {
-				mDBInTransactionObjectLock.wait();
-			} catch (InterruptedException e) {
-				// just ignore
-			}
 		}
 	}
 
@@ -96,7 +78,6 @@ public class DatabaseUtils {
 	public static String creationTableString(Class<?> contract) {
 		StringBuilder sb = new StringBuilder();
 		String tableName = getTableNameFromContract(contract);
-		sb.append(CREATE_TABLE + " " + tableName + " (");
 		Field[] fields = contract.getFields();
 		String primaryKey = getPrimaryKey(fields);
 		if (primaryKey != null) {
@@ -112,8 +93,9 @@ public class DatabaseUtils {
 		if (unique != null) {
 			sb.append(unique);
 		}
-		String result = sb.substring(0, sb.length() - 2) + ")";
-		Log.d(DATABASE_UTILS, result);
+		String tables = sb.substring(0, sb.length() - 2);
+		String result = String.format(CREATE_TABLE_TEMPLATE, tableName, tables);
+		L.d(LOG_TAG, result);
 		return result;
 	}
 
@@ -125,8 +107,8 @@ public class DatabaseUtils {
 	 * @return database table name string.
 	 * */
 	public static String getTableNameFromContract(Class<?> contract) {
-		Annotation annotation = contract.getAnnotation(DBTableName.class);
-		return ((DBTableName) annotation).tableName();
+		return ((DBTableName) contract.getAnnotation(DBTableName.class))
+				.tableName();
 	}
 
 	/**
@@ -223,7 +205,6 @@ public class DatabaseUtils {
 			}
 		}
 		String columnValue = getColumnValue(field);
-		// TODO check SQLite data types
 		for (Annotation annotation : annotations) {
 			if (annotation instanceof DBIntegerType) {
 				return columnValue + " " + INTEGER + ", ";
@@ -235,13 +216,13 @@ public class DatabaseUtils {
 				return columnValue + " " + BOOLEAN + ", ";
 			}
 			if (annotation instanceof DBLongType) {
-				return columnValue + " " + LONG + ", ";
+				return columnValue + " " + BIGINT + ", ";
 			}
 			if (annotation instanceof DBByteArrayType) {
 				return columnValue + " " + BLOB + ", ";
 			}
 			if (annotation instanceof DBByteType) {
-				return columnValue + " " + BYTE + ", ";
+				return columnValue + " " + INTEGER + ", ";
 			}
 			if (annotation instanceof DBDoubleType) {
 				return columnValue + " " + DOUBLE + ", ";
