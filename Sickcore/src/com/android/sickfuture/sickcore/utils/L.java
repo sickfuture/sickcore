@@ -1,8 +1,8 @@
 package com.android.sickfuture.sickcore.utils;
 
-import com.epam.android.framework.BuildConfig;
-
 import android.util.Log;
+
+import com.android.sickfuture.sickcore.BuildConfig;
 
 public class L {
 

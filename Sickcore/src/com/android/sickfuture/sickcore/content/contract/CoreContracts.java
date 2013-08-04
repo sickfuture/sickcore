@@ -15,7 +15,7 @@ import com.android.sickfuture.sickcore.service.DataSourceRequest;
 public class CoreContracts {
 
 	@DBTableName(tableName = "SICK_APP_REQUESTS")
-	@ContentInfo(contentType = "vnd.android.cursor.dir/SICK_APP_REQUESTS", contentUri = "content://provider.AppRequestsProvider/SICK_APPREQUESTS")
+	@ContentInfo(contentType = "vnd.android.cursor.dir/SICK_APP_REQUESTS", contentUri = "content://provider.AppRequestsProvider/SICK_APP_REQUESTS")
 	public static final class Request implements CoreBaseColumns {
 
 		// @DBLongType

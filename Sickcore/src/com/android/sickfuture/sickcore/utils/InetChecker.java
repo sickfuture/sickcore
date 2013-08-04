@@ -13,7 +13,7 @@ public class InetChecker {
 
 	public static boolean checkInetConnection(Activity activity,
 			boolean... showToast) {
-		if (!HttpManager.getInstance(activity).isAvalibleInetConnection()) {
+		if (!HttpManager.get(activity).isAvalibleInetConnection()) {
 			if (showToast.length != 0) {
 				if (showToast[0])
 					Toast.makeText(activity,

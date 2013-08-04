@@ -57,19 +57,15 @@ public class HttpManager implements IAppServiceKey {
 
 	public static final String SYSTEM_SERVICE_KEY = "sickcore:httpmanager";
 
-	private static final String UTF_8 = "UTF_8";
-
-	private HttpClient mClient;
-
 	private static HttpManager instance;
+	private HttpClient mClient;
+	private ConnectivityManager mConnectivityManager;
 
 	private static final int SO_TIMEOUT = 26000;
+	private static final int IO_BUFFER_SIZE = 8 * 1024;
+	private static final String UTF_8 = "UTF_8";
 
 	private static final String ILLEGAL_REQUEST_TYPE = "Illegal request type. Use HttpManager's RequestType.";
-
-	private static final int IO_BUFFER_SIZE = 8 * 1024;
-
-	private ConnectivityManager mConnectivityManager;
 
 	public static enum RequestType {
 		GET("GET"), POST("POST"), DELETE("DELETE");
@@ -79,8 +75,6 @@ public class HttpManager implements IAppServiceKey {
 
 	}
 
-	// TODO needs to be as implementation of some abstraction, discuss with me
-	// about it
 	private HttpManager() {
 		HttpParams params = new BasicHttpParams();
 		HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
