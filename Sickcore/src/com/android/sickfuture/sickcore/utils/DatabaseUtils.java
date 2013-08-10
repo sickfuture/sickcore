@@ -16,7 +16,7 @@ public class DatabaseUtils {
     private static final String LOG_TAG = "DatabaseUtils";
     private static final String WRONG_CONTRACTS_CLASS = "Wrong contracts class! Contracts class should be marked with DBContract annotation";
     private static final String BAD_CONTRACT_FIELD_VALUE = "Bad contract field value";
-    private static final String DATABASE_PRIMARY_KEY_EXCEPTION_MESSAGE = "Wrong contract class! Annotation @DBPrimaryKey does not exist at any field. Please implement the contract class by FrameWorkBaseColumns interface to get default primary key field";
+    private static final String DATABASE_PRIMARY_KEY_EXCEPTION_MESSAGE = "Wrong contract class! Annotation @DBPrimaryKey does not exist at any field. Please implement the contract class with CoreBaseColumns interface to get default primary key field";
     private static final String INTEGER_PRIMARY_KEY = " INTEGER PRIMARY KEY";
     private static final String AUTOINCREMENT = " AUTOINCREMENT";
     private static final String DOUBLE = "DOUBLE";
