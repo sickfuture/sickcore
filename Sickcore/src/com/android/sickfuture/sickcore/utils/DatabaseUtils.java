@@ -1,15 +1,28 @@
 package com.android.sickfuture.sickcore.utils;
 
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-
-import com.android.sickfuture.sickcore.annotations.db.*;
-import com.android.sickfuture.sickcore.annotations.db.contract.DBContract;
-import com.android.sickfuture.sickcore.annotations.db.types.*;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
+
+import com.android.sickfuture.sickcore.annotations.db.DBAutoincrement;
+import com.android.sickfuture.sickcore.annotations.db.DBPrimaryKey;
+import com.android.sickfuture.sickcore.annotations.db.DBTableName;
+import com.android.sickfuture.sickcore.annotations.db.DBUnique;
+import com.android.sickfuture.sickcore.annotations.db.contract.DBContract;
+import com.android.sickfuture.sickcore.annotations.db.types.DBBooleanType;
+import com.android.sickfuture.sickcore.annotations.db.types.DBByteArrayType;
+import com.android.sickfuture.sickcore.annotations.db.types.DBByteType;
+import com.android.sickfuture.sickcore.annotations.db.types.DBDoubleType;
+import com.android.sickfuture.sickcore.annotations.db.types.DBIntegerType;
+import com.android.sickfuture.sickcore.annotations.db.types.DBLongType;
+import com.android.sickfuture.sickcore.annotations.db.types.DBVarcharType;
+import com.android.sickfuture.sickcore.context.ContextHolder;
 
 public class DatabaseUtils {
 
@@ -226,4 +239,72 @@ public class DatabaseUtils {
         }
         return columnValue;
     }
+    
+	private static final String ILLEGAL_ACCESS_TO_CONTRACT_S_FIELD = "Illegal access to Contract's field";
+	private static final String CONTRACT_FIELD_IS_NOT_INSTANCE_OF_STRING = "Contract field is not instance of String.";
+	private static final String CONTRACT_CLASS_IS_NULL = "Contract class is null.";
+	private static final String KEYS_ARRAY_LENGTH_UNEQUAL_TO_VALUES_ARRAY_LENGTH = "Keys array length unequal to values array length.";
+
+	public static void updateRowValues(Class<?> contract, String selection,
+			String[] selectionArgs, String[] keys, Object[] values) {
+		if (keys.length != values.length)
+			throw new IllegalArgumentException(
+					KEYS_ARRAY_LENGTH_UNEQUAL_TO_VALUES_ARRAY_LENGTH);
+		if (contract == null)
+			throw new IllegalArgumentException(CONTRACT_CLASS_IS_NULL);
+		Context context = ContextHolder.getInstance().getContext();
+
+		Field[] fields = contract.getFields();
+		ArrayList<String> keyz = getArrayList(keys);
+
+		ContentValues contValues = null;
+		Uri uri = ContractUtils.getProviderUriFromContract(contract);
+		Cursor cursor = context.getContentResolver().query(uri, null,
+				selection, selectionArgs, null);
+		if (cursor.getCount() > 0) {
+			if (cursor.moveToFirst()) {
+				contValues = new ContentValues();
+				int i = 0;
+				for (Field field : fields) {
+					String contractItem;
+					try {
+						contractItem = (String) field.get(null);
+					} catch (IllegalArgumentException e) {
+						throw new IllegalArgumentException(
+								CONTRACT_FIELD_IS_NOT_INSTANCE_OF_STRING);
+					} catch (IllegalAccessException e) {
+						throw new IllegalArgumentException(
+								ILLEGAL_ACCESS_TO_CONTRACT_S_FIELD);
+					}
+					if (keyz.contains(contractItem)) {
+						// Class to = DatabaseUtils.getFieldClass(field);
+						contValues.put(contractItem,
+								(String) values[keyz.indexOf(contractItem)]);
+						L.d(LOG_TAG, "putToDb: key " + contractItem + " val "
+								+ (String) values[i]);
+					} else {
+						String val = cursor.getString(cursor
+								.getColumnIndex(contractItem));
+						contValues.put(contractItem, val);
+						L.d(LOG_TAG, "putToDb: stock key " + contractItem
+								+ " val " + val);
+					}
+				}
+			}
+		}
+		cursor.close();
+		if (contValues != null) {
+			context.getContentResolver().insert(uri, contValues);
+		}
+
+	}
+
+	private static ArrayList<String> getArrayList(String[] keys) {
+		ArrayList<String> list = new ArrayList<String>(keys.length);
+		for (int i = 0; i < keys.length; i++) {
+			list.add(keys[i]);
+		}
+		return list;
+	}
+
 }

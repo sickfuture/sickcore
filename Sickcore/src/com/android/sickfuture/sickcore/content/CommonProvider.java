@@ -60,7 +60,10 @@ public abstract class CommonProvider extends ContentProvider {
 	@Override
 	public int update(Uri uri, ContentValues values, String selection,
 			String[] selectionArgs) {
-		return 0;
+		int numInserted = 0;
+		numInserted = mHelper.update(getContractClass(), values, selection, selectionArgs);
+		getContext().getContentResolver().notifyChange(uri, null);
+		return numInserted;
 	}
 
 	protected Cursor rawQuery(Class<?> contract, Uri uri, String sql,

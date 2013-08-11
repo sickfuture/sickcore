@@ -1,12 +1,14 @@
 package com.android.sickfuture.sickcore.content;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Build;
 
 import com.android.sickfuture.sickcore.utils.AndroidVersionsUtils;
 import com.android.sickfuture.sickcore.utils.DatabaseUtils;
@@ -34,7 +36,6 @@ public class CommonDataBase extends SQLiteOpenHelper {
 
 	@Override
 	public SQLiteDatabase getWritableDatabase() {
-		// TODO Auto-generated method stub
 		return super.getWritableDatabase();
 	}
 
@@ -177,6 +178,53 @@ public class CommonDataBase extends SQLiteOpenHelper {
 			setInTransaction(false);
 		}
 		return numInserted;
+	}
+	
+	/**
+	 * Update items from database table which described by the contract up to values in 
+	 * ContentValues. CONFLICT_REPLACE flag is used.
+	 * 
+	 * @param contract
+	 *            Contract class of the current table.
+	 * @param values
+	 *            Values to be updated.
+	 * @param where
+	 *            A filter declaring which rows to return, formatted as an SQL
+	 *            WHERE clause (excluding the WHERE itself). Passing null will
+	 *            return all rows for the given table.
+	 * @param whereArgs
+	 *            You may include ?s in selection, which will be replaced by the
+	 *            values from selectionArgs, in order that they appear in the
+	 *            selection. The values will be bound as Strings.
+	 * @return The row ID of the updated row or -1 if any error was happened.
+	 * @throws SQLException
+	 * */
+	@TargetApi(Build.VERSION_CODES.FROYO)
+	protected int update(Class<?> contract, ContentValues values, String where,
+			String[] whereArgs) {
+		if (contract == null || values == null) {
+			return 0;
+		}
+		syncTransactions();
+		mContract = contract;
+		mDatabase = getWritableDatabase();
+		String tableName = DatabaseUtils.getTableNameFromContract(contract);
+		createTableIfNotExist(tableName);
+		int value = 0;
+		try {
+			setInTransaction(true);
+			beginTransaction(mDatabase);
+			value = mDatabase.updateWithOnConflict(tableName, values, where,
+					whereArgs, SQLiteDatabase.CONFLICT_REPLACE);
+			if (value <= 0) {
+				throw new SQLException("Failed to insert row into " + tableName);
+			} 
+			setTransactionSuccessful(mDatabase);
+		} finally {
+			endTransaction(mDatabase);
+			setInTransaction(false);
+		}
+		return value;
 	}
 
 	/**
