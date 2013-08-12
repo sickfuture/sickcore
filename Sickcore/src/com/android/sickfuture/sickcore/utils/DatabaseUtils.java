@@ -263,32 +263,35 @@ public class DatabaseUtils {
 				selection, selectionArgs, null);
 		if (cursor.getCount() > 0) {
 			if (cursor.moveToFirst()) {
-				contValues = new ContentValues();
-				int i = 0;
-				for (Field field : fields) {
-					String contractItem;
-					try {
-						contractItem = (String) field.get(null);
-					} catch (IllegalArgumentException e) {
-						throw new IllegalArgumentException(
-								CONTRACT_FIELD_IS_NOT_INSTANCE_OF_STRING);
-					} catch (IllegalAccessException e) {
-						throw new IllegalArgumentException(
-								ILLEGAL_ACCESS_TO_CONTRACT_S_FIELD);
+				while (!cursor.isAfterLast()) {
+					contValues = new ContentValues();
+					int i = 0;
+					for (Field field : fields) {
+						String contractItem;
+						try {
+							contractItem = (String) field.get(null);
+						} catch (IllegalArgumentException e) {
+							throw new IllegalArgumentException(
+									CONTRACT_FIELD_IS_NOT_INSTANCE_OF_STRING);
+						} catch (IllegalAccessException e) {
+							throw new IllegalArgumentException(
+									ILLEGAL_ACCESS_TO_CONTRACT_S_FIELD);
+						}
+						if (keyz.contains(contractItem)) {
+							contValues
+									.put(contractItem, (String) values[keyz
+											.indexOf(contractItem)]);
+//							L.d(LOG_TAG, "putToDb: key " + contractItem
+//									+ " val " + (String) values[i]);
+						} else {
+							String val = cursor.getString(cursor
+									.getColumnIndex(contractItem));
+							contValues.put(contractItem, val);
+//							L.d(LOG_TAG, "putToDb: stock key " + contractItem
+//									+ " val " + val);
+						}
 					}
-					if (keyz.contains(contractItem)) {
-						// Class to = DatabaseUtils.getFieldClass(field);
-						contValues.put(contractItem,
-								(String) values[keyz.indexOf(contractItem)]);
-						L.d(LOG_TAG, "putToDb: key " + contractItem + " val "
-								+ (String) values[i]);
-					} else {
-						String val = cursor.getString(cursor
-								.getColumnIndex(contractItem));
-						contValues.put(contractItem, val);
-						L.d(LOG_TAG, "putToDb: stock key " + contractItem
-								+ " val " + val);
-					}
+					cursor.moveToNext();
 				}
 			}
 		}

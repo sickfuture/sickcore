@@ -30,7 +30,9 @@ public abstract class CommonProvider extends ContentProvider {
 	public int bulkInsert(Uri uri, ContentValues[] values) throws SQLException {
 		int numInserted = 0;
 		numInserted = mHelper.addItems(getContractClass(), values);
-		getContext().getContentResolver().notifyChange(uri, null);
+		if (numInserted > 0) {
+			getContext().getContentResolver().notifyChange(uri, null);
+		}
 		return numInserted;
 	}
 
@@ -38,7 +40,9 @@ public abstract class CommonProvider extends ContentProvider {
 	public Uri insert(Uri uri, ContentValues values) throws SQLException {
 		long itemID = mHelper.addItem(getContractClass(), values);
 		Uri itemUri = Uri.parse(uri + "/" + itemID);
-		getContext().getContentResolver().notifyChange(itemUri, null);
+		if (itemID > 0) {
+			getContext().getContentResolver().notifyChange(itemUri, null);
+		}
 		return itemUri;
 	}
 
@@ -60,10 +64,13 @@ public abstract class CommonProvider extends ContentProvider {
 	@Override
 	public int update(Uri uri, ContentValues values, String selection,
 			String[] selectionArgs) {
-		int numInserted = 0;
-		numInserted = mHelper.update(getContractClass(), values, selection, selectionArgs);
-		getContext().getContentResolver().notifyChange(uri, null);
-		return numInserted;
+		int valueId = 0;
+		valueId = mHelper.update(getContractClass(), values, selection,
+				selectionArgs);
+		if (valueId > 0) {
+			getContext().getContentResolver().notifyChange(uri, null);
+		}
+		return valueId;
 	}
 
 	protected Cursor rawQuery(Class<?> contract, Uri uri, String sql,

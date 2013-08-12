@@ -248,6 +248,7 @@ public class CommonDataBase extends SQLiteOpenHelper {
 	 *         that Cursors are not synchronized, see the documentation for more
 	 *         details.
 	 * */
+	//TODO add projection!
 	protected Cursor getItems(Class<?> contract, String orderBy,
 			String selection, String[] selectionArgs) {
 		syncTransactions();
