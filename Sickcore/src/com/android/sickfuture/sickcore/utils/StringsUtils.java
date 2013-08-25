@@ -1,6 +1,5 @@
 package com.android.sickfuture.sickcore.utils;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -15,7 +14,7 @@ public class StringsUtils {
 		}
 		return ids.substring(0, ids.length() - 1);
 	}
-	
+
 	public static String join(HashMap<?, ?> items, String joiner) {
 		String keys = "";
 		String[] k = new String[items.size()];
@@ -25,8 +24,9 @@ public class StringsUtils {
 		}
 		return keys.substring(0, keys.length() - 1);
 	}
-	
-	public static String join(ArrayList<ContentValues> items, String itemKey, String joiner) {
+
+	public static String join(List<ContentValues> items, String itemKey,
+			String joiner) {
 		String keys = "";
 		for (int i = 0; i < items.size(); i++) {
 			keys += items.get(i).getAsString(itemKey) + joiner;
