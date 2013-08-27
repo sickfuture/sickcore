@@ -9,6 +9,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
+import android.util.Log;
 
 import com.android.sickfuture.sickcore.annotations.db.DBAutoincrement;
 import com.android.sickfuture.sickcore.annotations.db.DBPrimaryKey;
@@ -174,17 +175,18 @@ public class DatabaseUtils {
             }
         }
         StringBuilder sb = null;
-        String result = null;
-        if (uniqueFields.size() > 0) {
-            sb = new StringBuilder();
-            for (int i = 0; i < uniqueFields.size(); i++) {
-                sb.append("UNIQUE (" + getColumnValue(uniqueFields.get(0))
-                        + ", ");
-            }
-            result = sb.substring(0, sb.length() - 2);
-            result = result + "), ";
-        }
-        return result;
+		String result = null;
+		if (uniqueFields.size() > 0) {
+			sb = new StringBuilder("UNIQUE (");
+			for (int i = 0; i < uniqueFields.size(); i++) {
+				sb.append(getColumnValue(uniqueFields.get(i))
+						+ ", ");
+			}
+			sb.delete(sb.length()-2, sb.length()).append("), ");
+			result = sb.toString();
+		}
+		return result;
+
     }
 
     private static String appendString(Field field) {

@@ -70,7 +70,8 @@ public class HttpInputStreamDataSource implements IDataSource<InputStream> {
 
 	@Override
 	public InputStream getSource(String source) throws BadRequestException {
-		HttpGet request = new HttpGet(source.toString());
+		HttpGet request = new HttpGet(source);
+		request.addHeader("Accept", "application/json");
 		HttpResponse response = null;
 		try {
 			try {
