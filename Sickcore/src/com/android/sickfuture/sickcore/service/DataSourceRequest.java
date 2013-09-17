@@ -49,7 +49,7 @@ public class DataSourceRequest<DataSource, Result> {
 		mBundle = new Bundle();
 		mBundle.putString(REQUEST_URI, uri);
 		setForceUpdate(true); // Default value for force update data
-		setIsCacheable(false); // default value for isCacheble value
+		setIsCacheable(true); // default value for isCacheble value
 	}
 
 	protected DataSourceRequest() {

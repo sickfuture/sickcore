@@ -55,8 +55,8 @@ public abstract class CommonProvider extends ContentProvider {
 	@Override
 	public Cursor query(Uri uri, String[] projection, String selection,
 			String[] selectionArgs, String sortOrder) {
-		Cursor items = mHelper.getItems(getContractClass(), sortOrder,
-				selection, selectionArgs);
+		Cursor items = mHelper.getItems(getContractClass(), projection,
+				selection, selectionArgs, null, null, sortOrder);
 		items.setNotificationUri(getContext().getContentResolver(), uri);
 		return items;
 	}

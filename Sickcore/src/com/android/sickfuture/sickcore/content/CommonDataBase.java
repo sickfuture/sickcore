@@ -44,7 +44,6 @@ public class CommonDataBase extends SQLiteOpenHelper {
 		syncTransactions();
 		try {
 			setInTransaction(true);
-			// database.beginTransaction();
 			beginTransaction(database);
 			Class<?> contracts = mContract.getDeclaringClass();
 			DatabaseUtils.checkContractsClass(contracts);
@@ -52,10 +51,8 @@ public class CommonDataBase extends SQLiteOpenHelper {
 			for (Class<?> contract : subClasses) {
 				database.execSQL(DatabaseUtils.creationTableString(contract));
 			}
-			// database.setTransactionSuccessful();
 			setTransactionSuccessful(database);
 		} finally {
-			// database.endTransaction();
 			endTransaction(database);
 			setInTransaction(false);
 		}
@@ -116,17 +113,14 @@ public class CommonDataBase extends SQLiteOpenHelper {
 		long value;
 		try {
 			setInTransaction(true);
-			// mDatabase.beginTransaction();
 			beginTransaction(mDatabase);
 			value = mDatabase.insertWithOnConflict(tableName, null,
 					contentValues, SQLiteDatabase.CONFLICT_REPLACE);
 			if (value <= 0) {
 				throw new SQLException("Failed to insert row into " + tableName);
 			}
-			// mDatabase.setTransactionSuccessful();
 			setTransactionSuccessful(mDatabase);
 		} finally {
-			// mDatabase.endTransaction();
 			endTransaction(mDatabase);
 			setInTransaction(false);
 		}
@@ -158,7 +152,6 @@ public class CommonDataBase extends SQLiteOpenHelper {
 		int numInserted = 0;
 		try {
 			setInTransaction(true);
-			// mDatabase.beginTransaction();
 			beginTransaction(mDatabase);
 			for (ContentValues cv : contentValues) {
 				value = mDatabase.insertWithOnConflict(tableName, null, cv,
@@ -170,10 +163,8 @@ public class CommonDataBase extends SQLiteOpenHelper {
 					numInserted++;
 				}
 			}
-			// mDatabase.setTransactionSuccessful();
 			setTransactionSuccessful(mDatabase);
 		} finally {
-			// mDatabase.endTransaction();
 			endTransaction(mDatabase);
 			setInTransaction(false);
 		}
@@ -249,8 +240,8 @@ public class CommonDataBase extends SQLiteOpenHelper {
 	 *         details.
 	 * */
 	//TODO add projection!
-	protected Cursor getItems(Class<?> contract, String orderBy,
-			String selection, String[] selectionArgs) {
+	protected Cursor getItems(Class<?> contract, String[] columns,
+			String selection, String[] selectionArgs, String groupBy, String having, String orderBy) {
 		syncTransactions();
 		mContract = contract;
 		mDatabase = getWritableDatabase();
@@ -259,17 +250,14 @@ public class CommonDataBase extends SQLiteOpenHelper {
 		Cursor cursor = null;
 		try {
 			setInTransaction(true);
-			// mDatabase.beginTransaction();
 			beginTransaction(mDatabase);
-			cursor = mDatabase.query(tableName, null, selection, selectionArgs,
-					null, null, orderBy);
+			cursor = mDatabase.query(tableName, columns, selection, selectionArgs,
+					groupBy, having, orderBy);
 			if (cursor == null) {
 				throw new SQLException("Failed to query row from " + tableName);
 			}
-			// mDatabase.setTransactionSuccessful();
 			setTransactionSuccessful(mDatabase);
 		} finally {
-			// mDatabase.endTransaction();
 			endTransaction(mDatabase);
 			setInTransaction(false);
 		}
@@ -302,16 +290,13 @@ public class CommonDataBase extends SQLiteOpenHelper {
 		Cursor cursor = null;
 		try {
 			setInTransaction(true);
-			// mDatabase.beginTransaction();
 			beginTransaction(mDatabase);
 			cursor = mDatabase.rawQuery(sql, selectionArgs);
 			if (cursor == null) {
 				throw new SQLException("Failed to query: " + sql);
 			}
-			// mDatabase.setTransactionSuccessful();
 			setTransactionSuccessful(mDatabase);
 		} finally {
-			// mDatabase.endTransaction();
 			endTransaction(mDatabase);
 			setInTransaction(false);
 		}
