@@ -180,7 +180,11 @@ public class SickImageLoader implements IAppServiceKey {
 		return loadBitmapSync(url, 0, 0);
 	}
 
-	public Bitmap loadBitmap(String url, int widthInPx, int heightInPx) {
+	public Bitmap loadBitmap(String url, int widthInPx, int heightInPx,
+			ImageLoadedCallback callback) {
+		if (callback != null) {
+			callback.onLoadStarted(url);
+		}
 		BitmapDrawable bitmapDrawable = null;
 		Bitmap result = null;
 		if (mImageCacher != null) {
@@ -192,9 +196,10 @@ public class SickImageLoader implements IAppServiceKey {
 		BitmapAsyncTask bitmapAsyncTask = null;
 		if (result == null) {
 			if (widthInPx > 0 && heightInPx > 0) {
-				bitmapAsyncTask = new BitmapAsyncTask(widthInPx, heightInPx);
+				bitmapAsyncTask = new BitmapAsyncTask(widthInPx, heightInPx,
+						callback);
 			} else {
-				bitmapAsyncTask = new BitmapAsyncTask();
+				bitmapAsyncTask = new BitmapAsyncTask(callback);
 			}
 			bitmapAsyncTask.start(url);
 			try {
@@ -212,13 +217,20 @@ public class SickImageLoader implements IAppServiceKey {
 						|| result.getHeight() != heightInPx) {
 					result.recycle();
 					result = null;
-					bitmapAsyncTask = new BitmapAsyncTask(widthInPx, heightInPx);
+					bitmapAsyncTask = new BitmapAsyncTask(widthInPx,
+							heightInPx, callback);
 					try {
 						result = bitmapAsyncTask.get();
 					} catch (InterruptedException e) {
+						if (callback != null) {
+							callback.onLoadError(e);
+						}
 						L.e(LOG_TAG,
 								"Can't load bitmap. Troubles with asynctask execution!");
 					} catch (ExecutionException e) {
+						if (callback != null) {
+							callback.onLoadError(e);
+						}
 						L.e(LOG_TAG,
 								"Can't load bitmap. Troubles with asynctask execution!");
 					}
@@ -226,6 +238,20 @@ public class SickImageLoader implements IAppServiceKey {
 			}
 		}
 		return result;
+	}
+
+	public Bitmap loadBitmap(Resources resources, String url, int widthInDp,
+			int heightInDp, ImageLoadedCallback callback) {
+		return loadBitmap(url, (int) Converter.dpToPx(resources, widthInDp),
+				(int) Converter.dpToPx(resources, heightInDp), callback);
+	}
+
+	public Bitmap loadBitmap(String url, ImageLoadedCallback callback) {
+		return loadBitmap(url, 0, 0, callback);
+	}
+
+	public Bitmap loadBitmap(String url, int widthInPx, int heightInPx) {
+		return loadBitmap(url, widthInPx, heightInPx, null);
 	}
 
 	public Bitmap loadBitmap(Resources resources, String url, int widthInDp,
@@ -269,14 +295,14 @@ public class SickImageLoader implements IAppServiceKey {
 			L.e(LOG_TAG, "empty or null url");
 			setImageDrawable(imageView, new BitmapDrawable(mResources,
 					mPlaceHolderBitmap));
-			callback.onLoadError();
+			callback.onLoadError(new NullPointerException("empty or null url"));
 			return;
 		}
 		BitmapDrawable bitmapDrawable = mImageCacher
 				.getBitmapFromMemoryCache(url);
 		if (bitmapDrawable != null) {
 			imageView.setImageDrawable(bitmapDrawable);
-			callback.onLoadFinished();
+			callback.onLoadFinished(bitmapDrawable);
 		} else if (cancelPotentialDownload(imageView, url)) {
 			ImageAsyncTask bitmapAsyncTask = new ImageAsyncTask(imageView,
 					callback);
@@ -304,13 +330,12 @@ public class SickImageLoader implements IAppServiceKey {
 
 	public void loadBitmap(ImageView imageView, String url, int widthInPx,
 			int heightInPx, ImageLoadedCallback callback) {
-		callback.onLoadStarted();
+		callback.onLoadStarted(url);
 		try {
 			loadBitmapWithCallback(imageView, url, widthInPx, heightInPx,
 					callback);
 		} catch (Exception e) {
-			callback.onLoadError();
-			e.printStackTrace();
+			callback.onLoadError(e);
 		}
 	}
 
@@ -450,15 +475,19 @@ public class SickImageLoader implements IAppServiceKey {
 		private int mWidth;
 		private int mHeight;
 
+		private ImageLoadedCallback mCallback;
+
 		private boolean mDontCareAboutSize = false;
 
-		public BitmapAsyncTask() {
+		public BitmapAsyncTask(ImageLoadedCallback callback) {
 			mWidth = DEFAULT_IMAGE_WIDTH;
 			mHeight = DEFAULT_IMAGE_HEIGHT;
 			mDontCareAboutSize = true;
+			mCallback = callback;
 		}
 
-		public BitmapAsyncTask(int widthInPx, int heightInPx) {
+		public BitmapAsyncTask(int widthInPx, int heightInPx,
+				ImageLoadedCallback callback) {
 			if (widthInPx > 0) {
 				mWidth = widthInPx;
 				mDontCareAboutSize = false;
@@ -473,6 +502,7 @@ public class SickImageLoader implements IAppServiceKey {
 				mHeight = DEFAULT_IMAGE_HEIGHT;
 				mDontCareAboutSize = true;
 			}
+			mCallback = callback;
 		}
 
 		public void start(String url) {
@@ -529,9 +559,19 @@ public class SickImageLoader implements IAppServiceKey {
 						}
 					}
 				} catch (IOException e) {
+					if (mCallback != null) {
+						mCallback.onLoadError(e);
+					}
 					return mPlaceHolderBitmap;
 				}
 				return result;
+			}
+		}
+
+		@Override
+		protected void onPostExecute(Bitmap result) {
+			if (mCallback != null) {
+				mCallback.onLoadFinished(result);
 			}
 		}
 	}
@@ -631,7 +671,7 @@ public class SickImageLoader implements IAppServiceKey {
 				}
 			}
 			if (mCallback != null) {
-				mCallback.onLoadFinished();
+				mCallback.onLoadFinished(result);
 			}
 		}
 

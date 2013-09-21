@@ -2,10 +2,10 @@ package com.android.sickfuture.sickcore.image.callback;
 
 public interface ImageLoadedCallback {
 
-	void onLoadStarted();
+	void onLoadStarted(String uri);
 
-	void onLoadError();
+	void onLoadError(Throwable e);
 
-	void onLoadFinished();
+	void onLoadFinished(Object result);
 
 }
