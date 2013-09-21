@@ -1,6 +1,5 @@
 package com.android.sickfuture.sickcore.image;
 
-
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -11,11 +10,11 @@ import android.graphics.BitmapFactory;
 import android.os.Build;
 
 import com.android.sickfuture.sickcore.app.SickApp;
-import com.android.sickfuture.sickcore.exceptions.BadRequestException;
 import com.android.sickfuture.sickcore.source.implemented.HttpInputStreamDataSource;
 import com.android.sickfuture.sickcore.utils.AndroidVersionsUtils;
 import com.android.sickfuture.sickcore.utils.AppUtils;
 import com.android.sickfuture.sickcore.utils.Calculate;
+import com.android.sickfuture.sickcore.utils.Converter;
 import com.android.sickfuture.sickcore.utils.IOUtils;
 import com.android.sickfuture.sickcore.utils.L;
 
@@ -25,18 +24,23 @@ public class ImageWorker {
 
 	private static final String LOG_TAG = ImageWorker.class.getSimpleName();
 
-	public static final String SYSTEM_SERVICE_KEY = "sickcore:imageworker";
-
-	// private static final int IO_BUFFER_SIZE = 8 * 1024;
+	public static final String SYSTEM_SERVICE_KEY = "framework:imageworker";
 
 	private final ImageCacher mImageCacher;
 
-	private HttpInputStreamDataSource mDataSource;
+	private HttpInputStreamDataSource mDataSourceHttp;
 
 	protected ImageWorker(Context context, ImageCacher imageCacher) {
-		mDataSource = (HttpInputStreamDataSource) AppUtils.get(context,
+		mDataSourceHttp = (HttpInputStreamDataSource) AppUtils.get(context,
 				SickApp.HTTP_INPUT_STREAM_SERVICE_KEY);
 		mImageCacher = imageCacher;
+	}
+
+	public Bitmap loadBitmap(Context context, String url, int reqWidthDp,
+			int reqHeightDp) throws IOException {
+		return loadBitmap(url,
+				(int) Converter.dpToPx(context.getResources(), reqWidthDp),
+				(int) Converter.dpToPx(context.getResources(), reqHeightDp));
 	}
 
 	public Bitmap loadBitmap(String url, int reqWidth, int reqHeight)
@@ -45,12 +49,28 @@ public class ImageWorker {
 		FlushedInputStream fis = null;
 		try {
 			try {
-				is = mDataSource.getSource(url);
-			} catch (BadRequestException e) {
-				// can be ignore
+				is = mDataSourceHttp.getSource(url);
+			} catch (Exception e) {
+				// can be ignored
 			}
 			if (is == null) {
-				return null;
+				try {
+					BitmapFactory.Options options = new BitmapFactory.Options();
+					options.inJustDecodeBounds = true;
+					BitmapFactory.decodeFile(url, options);
+					int scale = Calculate.calculateInSampleSize(options,
+							reqWidth, reqHeight);
+					options.inJustDecodeBounds = false;
+					options.inSampleSize = scale;
+					options.inPurgeable = true;
+					Bitmap bitmap = BitmapFactory.decodeFile(url, options);
+					if (bitmap != null) {
+						return bitmap;
+					}
+					return null;
+				} catch (Exception e) {
+
+				}
 			}
 			fis = new FlushedInputStream(is);
 			fis.mark(is.available());
@@ -66,8 +86,10 @@ public class ImageWorker {
 			options.inSampleSize = sampleSize;
 			options.inJustDecodeBounds = false;
 			if (AndroidVersionsUtils.hasHoneycomb()) {
-				if (!options.outMimeType.equals(GIF)) {
-					addInBitmapOptions(options, mImageCacher);
+				if (options.outMimeType != null) {
+					if (!options.outMimeType.equals(GIF)) {
+						addInBitmapOptions(options, mImageCacher);
+					}
 				}
 			}
 			fis.reset();

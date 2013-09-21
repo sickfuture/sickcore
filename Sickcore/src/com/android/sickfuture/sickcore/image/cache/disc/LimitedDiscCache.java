@@ -13,10 +13,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.util.Log;
 
 import com.android.sickfuture.sickcore.utils.Converter;
-import com.android.sickfuture.sickcore.utils.L;
 
 public class LimitedDiscCache extends BaseDiscCache {
 
@@ -48,16 +46,11 @@ public class LimitedDiscCache extends BaseDiscCache {
 					for (File cachedFile : cachedFiles) {
 						if (!cachedFile.isDirectory()) {
 							size += cachedFile.length();
-							L.d(cachedFile.lastModified() + "",
-									cachedFile.getName());
 							LRUList.put(cachedFile.getName(),
 									cachedFile.lastModified());
 						}
 					}
 					mCacheSize.set(size);
-					// L.d(LOG_TAG, "init cache size=" + size +
-					// ", lru list size="
-					// + LRUList.size());
 				}
 			}
 		}).start();
@@ -79,12 +72,11 @@ public class LimitedDiscCache extends BaseDiscCache {
 			if (file.exists()) {
 				fis = new FileInputStream(file);
 				bitmap = BitmapFactory.decodeFileDescriptor(fis.getFD());
-				Log.d(LOG_TAG, "Disk cache hit");
 			}
 		} catch (FileNotFoundException e) {
 			// Ignored, because not cached yet
 		} catch (IOException e) {
-			// TODO do smth
+
 		} finally {
 			if (fis != null) {
 				try {
@@ -105,7 +97,6 @@ public class LimitedDiscCache extends BaseDiscCache {
 		long currSize = mCacheSize.get();
 		while (currSize + fileSize > mCacheLimit) {
 			int freed = removeLastUsed();
-			L.d(LOG_TAG, "freed=" + freed);
 			currSize -= freed;
 			if (freed == 0)
 				break;
@@ -114,13 +105,11 @@ public class LimitedDiscCache extends BaseDiscCache {
 		}
 		LRUList.put(key, cached.lastModified());
 		mCacheSize.addAndGet(fileSize);
-		// L.d(LOG_TAG, "putted, cachesize=" + mCacheSize.get());
 		return cached;
 	}
 
 	private int removeLastUsed() {
 		if (LRUList.size() == 0) {
-			// L.d(LOG_TAG, "lrulist empty when remove last used");
 			return 0;
 		}
 		long oldest = -1;
@@ -138,18 +127,13 @@ public class LimitedDiscCache extends BaseDiscCache {
 			}
 		}
 		if (oldestKey == null) {
-			// L.d(LOG_TAG, "oldest null");
 			return 0;
 		}
 		File toRemove = new File(getCacheDir(), oldestKey);
-		// L.d(LOG_TAG, "oldest is " + oldestKey);
 		if (!toRemove.exists()) {
 			LRUList.remove(oldestKey);
-			// L.d(LOG_TAG, "doesnt exist " + toRemove.getName());
 		}
 		int removedSize = (int) toRemove.length();
-		// L.d(LOG_TAG, "to remove file size=" + removedSize + ", lru size="
-		// + LRUList.size());
 		toRemove.delete();
 		LRUList.remove(oldestKey);
 		return removedSize;
@@ -158,7 +142,6 @@ public class LimitedDiscCache extends BaseDiscCache {
 
 	@Override
 	public boolean clear() {
-		// TODO Auto-generated method stub
 		return super.clear();
 	}
 

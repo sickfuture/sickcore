@@ -19,23 +19,25 @@ import android.text.TextUtils;
 import com.android.sickfuture.sickcore.image.cache.disc.LimitedDiscCache;
 import com.android.sickfuture.sickcore.image.drawable.RecyclingBitmapDrawable;
 import com.android.sickfuture.sickcore.utils.AndroidVersionsUtils;
+import com.android.sickfuture.sickcore.utils.L;
 
 public class ImageCacher {
 
 	protected static final String LOG_TAG = ImageCacher.class.getSimpleName();
 
-	public static final String SYSTEM_SERVICE_KEY = "sickcore:imagecacher";
+	public static final String SYSTEM_SERVICE_KEY = "framework:imagecacher";
 
 	private static final boolean DEFAULT_MEM_CACHE_ENABLED = true;
 	private static final boolean DEFAULT_DISK_CACHE_ENABLED = false;
 
-	private boolean mCacheOnMemory = DEFAULT_MEM_CACHE_ENABLED;
-	private boolean mCacheOnDisc = DEFAULT_DISK_CACHE_ENABLED;
+	private boolean mIsMemoryCacheEnabled = DEFAULT_MEM_CACHE_ENABLED;
+	private boolean mIsDiscCacheEnabled = DEFAULT_DISK_CACHE_ENABLED;
 
 	private static final int DEFAULT_MEMORY_CACHE_LIMIT = 2 * 1024 * 1024;// 2MB
-	private int cacheSize = DEFAULT_MEMORY_CACHE_LIMIT;
+	private int mMemoryCacheSize = DEFAULT_MEMORY_CACHE_LIMIT;
 
-	private static final int DISC_CACHE_LIMIT = 10 * 1024 * 1024; // 10MB
+	private static final int DEFAULT_DISC_CACHE_LIMIT = 10 * 1024 * 1024; // 10MB
+	private int mDiscCacheSize = DEFAULT_DISC_CACHE_LIMIT;
 
 	private LruCache<String, BitmapDrawable> mStorage;
 
@@ -46,9 +48,10 @@ public class ImageCacher {
 
 	private LimitedDiscCache mDiscCache;
 
-	private int memClass;
+	private final Context mContext;
 
 	protected ImageCacher(Context context) {
+		mContext = context;
 		mResources = context.getResources();
 		init(context);
 	}
@@ -59,10 +62,7 @@ public class ImageCacher {
 			mReusableBitmaps = Collections
 					.synchronizedSet(new HashSet<SoftReference<Bitmap>>());
 		}
-		memClass = ((ActivityManager) context
-				.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryClass();
-		// cacheSize = 1024 * 1024 * memClass / 4;
-		mStorage = new LruCache<String, BitmapDrawable>(cacheSize) {
+		mStorage = new LruCache<String, BitmapDrawable>(mMemoryCacheSize) {
 			@Override
 			protected int sizeOf(String key, BitmapDrawable value) {
 				return value.getBitmap().getRowBytes()
@@ -83,24 +83,63 @@ public class ImageCacher {
 				}
 			}
 		};
-		mDiscCache = new LimitedDiscCache(mCacheDir, DISC_CACHE_LIMIT);
+		mDiscCache = new LimitedDiscCache(mCacheDir, mDiscCacheSize);
 	}
 
-	public BitmapDrawable getBitmapFromFileCache(String url) {
+	public void setDiscCacheEnabled(boolean isEnabled) {
+		this.mIsDiscCacheEnabled = isEnabled;
+	}
+
+	public void setMemoryCacheEnabled(boolean isEnabled) {
+		this.mIsMemoryCacheEnabled = isEnabled;
+	}
+
+	public void setDiscCacheSize(int discCacheSizeInBytes) {
+		this.mDiscCacheSize = discCacheSizeInBytes;
+	}
+
+	public void setMemoryCacheSize(int memoryCacheSizeInBytes) {
+		this.mMemoryCacheSize = memoryCacheSizeInBytes;
+	}
+
+	public void setPartOfAvailableMemoryCache(float part) {
+		if (part > 0f && part <= 1f) {
+			int memClass = ((ActivityManager) mContext
+					.getSystemService(Context.ACTIVITY_SERVICE))
+					.getMemoryClass();
+			mMemoryCacheSize = (int) (1024 * 1024 * memClass * part);
+		}
+	}
+
+	protected BitmapDrawable getBitmapFromFileCache(String url) {
 		Bitmap result = mDiscCache.get(url);
 		BitmapDrawable drawable = null;
-		if (result != null && mCacheOnMemory) {
+		if (result != null) {
 			if (AndroidVersionsUtils.hasHoneycomb()) {
 				drawable = new BitmapDrawable(mResources, result);
 			} else {
 				drawable = new RecyclingBitmapDrawable(mResources, result);
 			}
+		}
+		if (mIsMemoryCacheEnabled) {
 			putBitmapToMemoryCache(url, drawable);
 		}
 		return drawable;
 	}
 
-	public BitmapDrawable getBitmapFromMemoryCache(String key) {
+	protected void putBitmapToFileCache(String key, BitmapDrawable value) {
+		if (key == null || TextUtils.isEmpty(key) || value == null) {
+			L.w(LOG_TAG,
+					"Cant't put bitmap to memory cache. Illegal arguments!");
+			return;
+		}
+		mDiscCache.put(key, value.getBitmap());
+	}
+
+	protected BitmapDrawable getBitmapFromMemoryCache(String key) {
+		if (key == null || TextUtils.isEmpty(key)) {
+			return null;
+		}
 		if (mStorage != null) {
 			return mStorage.get(key);
 		} else {
@@ -108,18 +147,19 @@ public class ImageCacher {
 		}
 	}
 
-	public void put(String url, BitmapDrawable value) {
-		if (!TextUtils.isEmpty(url) && value != null) {
-			if (mCacheOnMemory)
-				putBitmapToMemoryCache(url, value);
-			if (mCacheOnDisc)
-				mDiscCache.put(url, value.getBitmap());
+	protected void put(String url, BitmapDrawable value) {
+		if (mIsMemoryCacheEnabled) {
+			putBitmapToMemoryCache(url, value);
 		}
-
+		if (mIsDiscCacheEnabled) {
+			putBitmapToFileCache(url, value);
+		}
 	}
 
-	public void putBitmapToMemoryCache(String key, BitmapDrawable value) {
-		if (key == null || value == null) {
+	protected void putBitmapToMemoryCache(String key, BitmapDrawable value) {
+		if (key == null || TextUtils.isEmpty(key) || value == null) {
+			L.w(LOG_TAG,
+					"Cant't put bitmap to memory cache. Illegal arguments!");
 			return;
 		}
 		if (mStorage != null && getBitmapFromMemoryCache(key) == null) {
@@ -130,7 +170,7 @@ public class ImageCacher {
 		}
 	}
 
-	public Bitmap getBitmapFromReusableSet(BitmapFactory.Options options) {
+	protected Bitmap getBitmapFromReusableSet(BitmapFactory.Options options) {
 		Bitmap bitmap = null;
 		if (mReusableBitmaps != null && !mReusableBitmaps.isEmpty()) {
 			synchronized (mReusableBitmaps) {
@@ -155,7 +195,7 @@ public class ImageCacher {
 		return bitmap;
 	}
 
-	private static boolean canUseForInBitmap(Bitmap candidate,
+	protected static boolean canUseForInBitmap(Bitmap candidate,
 			BitmapFactory.Options targetOptions) {
 		if (targetOptions.inSampleSize <= 0) {
 			return false;

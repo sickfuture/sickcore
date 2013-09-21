@@ -6,19 +6,19 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 
-import com.android.sickfuture.sickcore.image.SickImageLoader.BitmapAsyncTask;
+import com.android.sickfuture.sickcore.image.SickImageLoader.ImageAsyncTask;
 
 public class AsyncBitmapDrawable extends BitmapDrawable {
 
-	private WeakReference<BitmapAsyncTask> mDrawableTaskReference;
+	private WeakReference<ImageAsyncTask> mDrawableTaskReference;
 
 	public AsyncBitmapDrawable(Resources resources, Bitmap loadingBitmap,
-			BitmapAsyncTask loaderTask) {
+			ImageAsyncTask loaderTask) {
 		super(resources, loadingBitmap);
-		mDrawableTaskReference = new WeakReference<BitmapAsyncTask>(loaderTask);
+		mDrawableTaskReference = new WeakReference<ImageAsyncTask>(loaderTask);
 	}
 
-	public BitmapAsyncTask getLoaderTask() {
+	public ImageAsyncTask getLoaderTask() {
 		return mDrawableTaskReference.get();
 	}
 

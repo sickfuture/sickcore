@@ -7,7 +7,6 @@ import java.io.IOException;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.CompressFormat;
-import android.util.Log;
 
 import com.android.sickfuture.sickcore.utils.Converter;
 import com.android.sickfuture.sickcore.utils.L;
@@ -37,7 +36,6 @@ public abstract class BaseDiscCache {
 		File cacheFile = null;
 		cacheFile = new File(mCacheDir, key);
 		if (cacheFile.exists()) {
-			Log.d(LOG_TAG, "Disk cache hit");
 			return cacheFile;
 		}
 		return cacheFile;
@@ -55,7 +53,7 @@ public abstract class BaseDiscCache {
 			cacheFile.setLastModified(System.currentTimeMillis());
 			return cacheFile;
 		} catch (IOException e) {
-			Log.e(LOG_TAG, "putBitmapToCache - " + e);
+			L.e(LOG_TAG, "putBitmapToCache - " + e);
 		} finally {
 			try {
 				if (fos != null) {
