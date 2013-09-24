@@ -18,6 +18,11 @@ public class Converter {
 	private Converter() {
 	}
 
+	/**
+	 * Input date format: yyyy-MM-dd'T'HH:mm:ssZ
+	 * @param dateTime
+	 * @return time in miliseconds
+	 */
 	public static long dateTimeToUnix(String dateTime) {
 		try {
 			String format = "yyyy-MM-dd'T'HH:mm:ssZ";
@@ -32,6 +37,19 @@ public class Converter {
 		return -1;
 	}
 
+	public static long dateToUnix(String date){
+		try {
+			String format = "yyyy-MM-dd";
+			SimpleDateFormat sdf = new SimpleDateFormat(format,
+					Locale.getDefault());
+			long unix = sdf.parse(date).getTime();
+			unix /= 1000;
+			return unix;
+		} catch (ParseException e) {
+			L.e(LOG_TAG, "dateTimeToUnix: " + e.toString());
+		}
+		return -1;
+	}
 	public static String unixTimeToDateTimeString(long unixTime) {
 		SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm",
 				Locale.getDefault());
