@@ -22,10 +22,10 @@ import android.widget.ImageView;
 
 import com.android.sickfuture.sickcore.app.AppHelper.IAppServiceKey;
 import com.android.sickfuture.sickcore.app.SickApp;
+import com.android.sickfuture.sickcore.asynctask.AsyncTask;
 import com.android.sickfuture.sickcore.context.ContextHolder;
 import com.android.sickfuture.sickcore.image.callback.ImageLoadedCallback;
 import com.android.sickfuture.sickcore.image.drawable.RecyclingBitmapDrawable;
-import com.android.sickfuture.sickcore.task.AsyncTask;
 import com.android.sickfuture.sickcore.utils.AndroidVersionsUtils;
 import com.android.sickfuture.sickcore.utils.Converter;
 import com.android.sickfuture.sickcore.utils.L;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.sickfuture.sickcore.task;
+package com.android.sickfuture.sickcore.asynctask;
 
 import java.util.ArrayDeque;
 import java.util.concurrent.BlockingQueue;
