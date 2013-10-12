@@ -130,7 +130,7 @@ public class ImageCacher {
 	protected void putBitmapToFileCache(String key, BitmapDrawable value) {
 		if (key == null || TextUtils.isEmpty(key) || value == null) {
 			L.w(LOG_TAG,
-					"Cant't put bitmap to memory cache. Illegal arguments!");
+					"Cant't put bitmap to file cache. Illegal arguments!");
 			return;
 		}
 		mDiscCache.put(key, value.getBitmap());
