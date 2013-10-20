@@ -1,5 +1,7 @@
 package com.android.sickfuture.sickcore.utils;
 
+import android.text.TextUtils;
+
 public class SQLQueryBuilder {
 	private String sql;
 
@@ -28,24 +30,25 @@ public class SQLQueryBuilder {
 	public SQLQueryBuilder() {
 		sql = "";
 	}
-	
+
 	public static String and(Object... objects) {
 		if (objects == null) {
 			return null;
 		}
 		return getAsString(" AND ", objects);
 	}
-	
+
 	public static String or(Object... objects) {
 		if (objects == null) {
 			return null;
 		}
 		return getAsString(" OR ", objects);
 	}
-	
+
 	public static String as(String[] columns, String[] names) {
 		if (columns.length != names.length) {
-			throw new IllegalArgumentException("Columns and names length must be equal!");
+			throw new IllegalArgumentException(
+					"Columns and names length must be equal!");
 		}
 		Object[] result = new String[columns.length];
 		for (int i = 0; i < columns.length; i++) {
@@ -68,7 +71,7 @@ public class SQLQueryBuilder {
 		if (where != null) {
 			sql += " " + where;
 		}
-		if (groupBy != null) {
+		if (!TextUtils.isEmpty(groupBy)) {
 			sql += " " + groupBy;
 		}
 		if (having != null) {
@@ -80,10 +83,10 @@ public class SQLQueryBuilder {
 		if (limit != null) {
 			sql += " " + limit;
 		}
-		//sql += "";
-		/*if (selectTitle != null) {
-			sql += " " + selectTitle;
-		}*/
+		// sql += "";
+		/*
+		 * if (selectTitle != null) { sql += " " + selectTitle; }
+		 */
 	}
 
 	private static String getAsString(String joiner, Object... objects) {
@@ -95,13 +98,16 @@ public class SQLQueryBuilder {
 				// TODO must be test
 				result += "(" + ((SQLQueryBuilder) objects[i]);
 				if (((SQLQueryBuilder) objects[i]).selectTitle != null) {
-					result += ") " + ((SQLQueryBuilder) objects[i]).selectTitle + joiner;
+					result += ") " + ((SQLQueryBuilder) objects[i]).selectTitle
+							+ joiner;
 				} else {
 					result += joiner;
 				}
 			}
 		}
-		result = result.substring(0, result.length() - joiner.length());
+		if (result.length() >= joiner.length()) {
+			result = result.substring(0, result.length() - joiner.length());
+		}
 		return result;
 	}
 
@@ -126,11 +132,12 @@ public class SQLQueryBuilder {
 		return this;
 	}
 
-	public SQLQueryBuilder groupBy(Object... groupBy) {
-		if (groupBy == null) {
+	public SQLQueryBuilder groupBy(String groupBy) {
+		if (!TextUtils.isEmpty(groupBy)) {
 			return this;
 		}
-		this.groupBy = String.format(templateGroupBy, getAsString(", ", groupBy));
+		this.groupBy = String.format(templateGroupBy,
+				getAsString(", ", groupBy));
 		return this;
 	}
 
@@ -139,14 +146,14 @@ public class SQLQueryBuilder {
 		return this;
 	}
 
-	public SQLQueryBuilder orderBy(Object... ordersBy) {
-		if (ordersBy == null) {
+	public SQLQueryBuilder orderBy(String ordersBy) {
+		if (!TextUtils.isEmpty(ordersBy)) {
 			return this;
 		}
 		orderBy = String.format(templateOrderBy, getAsString(", ", ordersBy));
 		return this;
 	}
-	
+
 	public SQLQueryBuilder limit(long limit) {
 		this.limit = String.format(templateLimit, String.valueOf(limit));
 		return this;

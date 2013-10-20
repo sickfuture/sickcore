@@ -170,10 +170,10 @@ public class CommonDataBase extends SQLiteOpenHelper {
 		}
 		return numInserted;
 	}
-	
+
 	/**
-	 * Update items from database table which described by the contract up to values in 
-	 * ContentValues. CONFLICT_REPLACE flag is used.
+	 * Update items from database table which described by the contract up to
+	 * values in ContentValues. CONFLICT_REPLACE flag is used.
 	 * 
 	 * @param contract
 	 *            Contract class of the current table.
@@ -208,8 +208,58 @@ public class CommonDataBase extends SQLiteOpenHelper {
 			value = mDatabase.updateWithOnConflict(tableName, values, where,
 					whereArgs, SQLiteDatabase.CONFLICT_REPLACE);
 			if (value <= 0) {
-				throw new SQLException("Failed to insert row into " + tableName);
-			} 
+				throw new SQLException("Failed to update row into " + tableName);
+			}
+			setTransactionSuccessful(mDatabase);
+		} finally {
+			endTransaction(mDatabase);
+			setInTransaction(false);
+		}
+		return value;
+	}
+
+	/**
+	 * Update items from database table which described by the contract up to
+	 * values in ContentValues. CONFLICT_REPLACE flag is used.
+	 * 
+	 * @param contract
+	 *            Contract class of the current table.
+	 * @param values
+	 *            Values to be updated.
+	 * @param where
+	 *            A filter declaring which rows to return, formatted as an SQL
+	 *            WHERE clause (excluding the WHERE itself). Passing null will
+	 *            return all rows for the given table.
+	 * @param whereArgs
+	 *            You may include ?s in selection, which will be replaced by the
+	 *            values from selectionArgs, in order that they appear in the
+	 *            selection. The values will be bound as Strings.
+	 * @return The row ID of the updated row or -1 if any error was happened.
+	 * @throws SQLException
+	 * */
+	@TargetApi(Build.VERSION_CODES.FROYO)
+	protected int updateItems(Class<?> contract, ContentValues[] values,
+			String where, String[] whereArgs) {
+		if (contract == null || values == null) {
+			return 0;
+		}
+		syncTransactions();
+		mContract = contract;
+		mDatabase = getWritableDatabase();
+		String tableName = DatabaseUtils.getTableNameFromContract(contract);
+		createTableIfNotExist(tableName);
+		int value = 0;
+		try {
+			setInTransaction(true);
+			beginTransaction(mDatabase);
+			for (ContentValues cv : values) {
+				value = mDatabase.updateWithOnConflict(tableName, cv, where,
+						whereArgs, SQLiteDatabase.CONFLICT_REPLACE);
+				if (value <= 0) {
+					throw new SQLException("Failed to update row into "
+							+ tableName);
+				}
+			}
 			setTransactionSuccessful(mDatabase);
 		} finally {
 			endTransaction(mDatabase);
@@ -239,9 +289,10 @@ public class CommonDataBase extends SQLiteOpenHelper {
 	 *         that Cursors are not synchronized, see the documentation for more
 	 *         details.
 	 * */
-	//TODO add projection!
+	// TODO add projection!
 	protected Cursor getItems(Class<?> contract, String[] columns,
-			String selection, String[] selectionArgs, String groupBy, String having, String orderBy) {
+			String selection, String[] selectionArgs, String groupBy,
+			String having, String orderBy) {
 		syncTransactions();
 		mContract = contract;
 		mDatabase = getWritableDatabase();
@@ -251,8 +302,8 @@ public class CommonDataBase extends SQLiteOpenHelper {
 		try {
 			setInTransaction(true);
 			beginTransaction(mDatabase);
-			cursor = mDatabase.query(tableName, columns, selection, selectionArgs,
-					groupBy, having, orderBy);
+			cursor = mDatabase.query(tableName, columns, selection,
+					selectionArgs, groupBy, having, orderBy);
 			if (cursor == null) {
 				throw new SQLException("Failed to query row from " + tableName);
 			}
