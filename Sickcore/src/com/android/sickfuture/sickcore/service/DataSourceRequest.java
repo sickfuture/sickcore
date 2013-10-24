@@ -130,6 +130,10 @@ public class DataSourceRequest<DataSource, Result> {
 				sendStatus(Status.ERROR, resultReceiver, mBundle);
 				return;
 			}
+			if (processor.extraProcessingData() != null) {
+				mBundle.putBundle(IProcessor.EXTRA_PROCESSING_DATA,
+						processor.extraProcessingData());
+			}
 			if (isCacheable()) {
 				boolean cached = false;
 				cached = processor.cache(result, context);
