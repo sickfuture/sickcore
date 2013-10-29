@@ -29,10 +29,50 @@ public class PreferencesHelper {
 		editor.putInt(key, value);
 		editor.commit();
 	}
+	
+	/**
+	 * Preferences with MODE_PRIVATE
+	 */
+	public static void putString(Context context, String name, String key,
+			String value) {
+		putString(context, Context.MODE_PRIVATE, name, key, value);
+	}
+
+	/**
+	 * Preferences with MODE_PRIVATE
+	 */
+	public static String getString(Context context, String name, String key) {
+		return getString(context, Context.MODE_PRIVATE, name, key);
+	}
+
+	/**
+	 * Preferences with MODE_PRIVATE
+	 * 
+	 * @param context
+	 * @param name
+	 * @param key
+	 * @param value
+	 */
+	public static void putInt(Context context, String name, String key,
+			int value) {
+		putInt(context, Context.MODE_PRIVATE, name, key, value);
+	}
 
 	public static int getInt(Context context, int mode, String name, String key) {
 		SharedPreferences pref = context.getSharedPreferences(name, mode);
 		return pref.getInt(key, DEFVALUE_INT);
+	}
+
+	/**
+	 * Preferences with MODE_PRIVATE
+	 * 
+	 * @param context
+	 * @param name
+	 * @param key
+	 * @return
+	 */
+	public static int getInt(Context context, String name, String key) {
+		return getInt(context, Context.MODE_PRIVATE, name, key);
 	}
 
 	public static void putBoolean(Context context, int mode, String name,
@@ -46,6 +86,21 @@ public class PreferencesHelper {
 			String key) {
 		SharedPreferences pref = context.getSharedPreferences(name, mode);
 		return pref.getBoolean(key, DEFVALUE_BOOLEAN);
+	}
+
+	/**
+	 * Preferences with MODE_PRIVATE
+	 */
+	public static void putBoolean(Context context, String name, String key,
+			boolean value) {
+		putBoolean(context, Context.MODE_PRIVATE, name, key, value);
+	}
+
+	/**
+	 * Preferences with MODE_PRIVATE
+	 */
+	public static boolean getBoolean(Context context, String name, String key) {
+		return getBoolean(context, Context.MODE_PRIVATE, name, key);
 	}
 
 	public static void clear(Context context, int mode, String name) {
