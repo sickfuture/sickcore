@@ -27,7 +27,11 @@ local.properties
 *.idea
 *.iws
 .idea
+*.iml
 
 # Sandbox stuff
 _sandbox
 
+# Maven
+log/
+target/
